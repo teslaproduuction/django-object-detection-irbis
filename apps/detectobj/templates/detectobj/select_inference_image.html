@@ -62,7 +62,7 @@
                 <div class="row">
                     <div class="col-sm-12">
                         {% if inf_img_qs %}
-                            <h3 class="cart-title">inferenced Image 
+                            <h3 class="cart-title">Latest inferenced Image 
                             <button class="btn btn-info btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#collapseExample" aria-expanded="false" aria-controls="collapseExample">
                                 Show Results
                             </button>
@@ -70,12 +70,19 @@
                             <div class="collapse" id="collapseExample">
                                 <div class="card card-body">
                                     {% if inf_img_qs.detection_info|length > 0 %}
+                                        <h5 class="cart-title text-muted">
+                                            {% if inf_img_qs.custom_model %}
+                                                Using Custom Model: {{ inf_img_qs.custom_model.name }} 
+                                                <span class="badge bg-info text-dark">Classes renamed to snow-leopard</span>
+                                            {% elif inf_img_qs.yolo_model %}
+                                                Using YOLO Model: {{ inf_img_qs.yolo_model }}
+                                            {% endif %}
+                                        </h5>
                                         <h5 class="cart-title text-muted">Objects detected : 
                                         <span class="text-success">{{ inf_img_qs.detection_info|length }}</span></h5>
                                         <hr>
                                         <h5 class="cart-title text-muted">Objects Occurrances {{ results_counter }}</h5> 
                                         <hr>
-                                        {{ inf_img_qs.detection_info }}
                                         {% for result in inf_img_qs.detection_info %}
                                             {% for k, v in result.items %}
                                                 {{ k }} : {{ v }}<br>
@@ -119,6 +126,51 @@
                             {% endif %}
                     </div>
                 </div>
+
+                <!-- Previous Detection Results Section -->
+                {% if img_qs.detectedimages.all|length > 1 %}
+                <hr>
+                <div class="row">
+                    <div class="col-sm-12">
+                        <h3 class="cart-title">Previous Detection Results 
+                            <button class="btn btn-info btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePrevious" aria-expanded="false" aria-controls="collapsePrevious">
+                                Show Previous Results
+                            </button>
+                        </h3>
+                        <div class="collapse" id="collapsePrevious">
+                            <div class="card card-body">
+                                <div class="row">
+                                    {% for prev_detection in img_qs.detectedimages.all %}
+                                        {% if forloop.counter > 1 %}  <!-- Skip the first/latest one as it's already shown above -->
+                                            <div class="col-md-6 mb-3">
+                                                <div class="card">
+                                                    <div class="card-header">
+                                                        {% if prev_detection.custom_model %}
+                                                            <strong>Custom Model:</strong> {{ prev_detection.custom_model.name }}
+                                                            <span class="badge bg-info text-dark">Classes renamed to snow-leopard</span>
+                                                        {% elif prev_detection.yolo_model %}
+                                                            <strong>YOLO Model:</strong> {{ prev_detection.yolo_model }}
+                                                        {% endif %}
+                                                        <br>
+                                                        <small>Detected at: {{ prev_detection.detection_timestamp }}</small>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <img src="{{ prev_detection.inf_image_path }}" alt="" class="img-fluid" />
+                                                        <p class="mt-2">
+                                                            <strong>Confidence:</strong> {{ prev_detection.model_conf }}<br>
+                                                            <strong>Detections:</strong> {{ prev_detection.detection_info|length }}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div> 
     </div>
@@ -128,5 +180,3 @@
 {% block on_page_script %}
 <script src="{% static 'js/ekko-lightbox.js' %}"></script>
 {% endblock on_page_script %}
-
-

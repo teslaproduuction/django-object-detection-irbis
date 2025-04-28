@@ -4,7 +4,7 @@ from PIL import Image as I
 import torch
 import collections
 from ast import literal_eval
-import yolov5
+from ultralytics import YOLO
 
 from django.views.generic.detail import DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -33,7 +33,7 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
         self.get_pagination(context, images_qs)
 
         if is_inf_img := InferencedImage.objects.filter(
-            orig_image=img_qs
+                orig_image=img_qs
         ).exists():
             inf_img_qs = InferencedImage.objects.get(orig_image=img_qs)
             context['inf_img_qs'] = inf_img_qs
@@ -49,7 +49,7 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
         page_number = self.request.GET.get('page')
         page_obj = paginator.get_page(page_number)
         context["is_paginated"] = (
-            images_qs.count() > settings.PAGINATE_DETECTION_IMAGES_NUM
+                images_qs.count() > settings.PAGINATE_DETECTION_IMAGES_NUM
         )
         context["page_obj"] = page_obj
 
@@ -59,71 +59,166 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
         img = I.open(io.BytesIO(img_bytes))
 
         # Get form data
-        modelconf = self.request.POST.get("confidence")
+        modelconf = self.request.POST.get("model_conf")
         modelconf = float(
             modelconf) if modelconf else settings.MODEL_CONFIDENCE
         custom_model_id = self.request.POST.get("custom_model")
         yolo_model_name = self.request.POST.get("yolo_model")
 
-        # Yolov5 dirs
-        yolo_weightsdir = settings.YOLOV5_WEIGTHS_DIR
+        # Yolov8 dirs
+        yolo_weightsdir = settings.YOLOV8_WEIGTHS_DIR
+
+        # Flag to track if we're using a custom model
+        is_custom_model = False
 
         # Whether user selected a custom model for the detection task
         # An offline model will be used for detection provided user has
         # uploaded this model.
         if custom_model_id:
             detection_model = MLModel.objects.get(id=custom_model_id)
-            model = yolov5.load(detection_model.pth_filepath)
-            # print(model.names)
+            model = YOLO(detection_model.pth_filepath)
+            is_custom_model = True
+            # Print class names for debugging
+            print("Custom model class names:", model.names)
 
         # Whether user selected a yolo model for the detection task
-        # Selected yolov5 model will be downloaded, and ready for object
-        # detection task. Yolov5 Api's will start working.
+        # Selected yolov8 model will be downloaded, and ready for object
+        # detection task. YOLOv8 API will start working.
         elif yolo_model_name:
-            model = yolov5.load(os.path.join(yolo_weightsdir, yolo_model_name))
+            model_path = os.path.join(yolo_weightsdir, yolo_model_name)
+            # Download if not exists
+            if not os.path.exists(model_path):
+                model = YOLO(yolo_model_name)  # This will download the model
+            else:
+                model = YOLO(model_path)
+            # Print class names for debugging
+            print("YOLO model class names:", model.names)
 
-        model.conf = modelconf
-        # classnames = model.names  (display classes in the model)
+        # If using custom model, pre-update class names before inference
+        if is_custom_model:
+            # Fix class names in model before running inference
+            for idx in model.names:
+                if model.names[idx].lower() in ['cat', 'sheep']:
+                    model.names[idx] = 'snow-leopard'
+                    print(f"Updated class {idx} from 'cat'/'sheep' to 'snow-leopard'")
 
-        results = model(img, size=640)
-        results_list = results.pandas().xyxy[0].to_json(orient="records")
-        results_list = literal_eval(results_list)
-        classes_list = [item["name"] for item in results_list]
+        # Run inference
+        results = model(img, conf=modelconf, verbose=False)
+
+        # Process results
+        results_list = []
+        for r in results:
+            # Update class names in results if using custom model
+            if is_custom_model and hasattr(r, 'names'):
+                for idx in r.names:
+                    if r.names[idx].lower() in ['cat', 'sheep']:
+                        r.names[idx] = 'snow-leopard'
+
+            detection_boxes = []
+            for box in r.boxes:
+                # Convert box data to dictionary
+                b = box.xywhn[0].tolist()  # normalized xywh format
+                cls_id = int(box.cls[0].item())
+                conf = float(box.conf[0].item())
+
+                # Get class name (will already be updated if custom model)
+                class_name = model.names[cls_id]
+
+                # Double check and update if still cat/sheep
+                if is_custom_model and class_name.lower() in ['cat', 'sheep']:
+                    class_name = 'snow-leopard'
+                    model.names[cls_id] = 'snow-leopard'
+
+                detection_boxes.append({
+                    "class": class_name,
+                    "class_id": cls_id,
+                    "confidence": conf,
+                    "x": b[0],
+                    "y": b[1],
+                    "width": b[2],
+                    "height": b[3]
+                })
+            results_list = detection_boxes
+
+        # Get class occurrences
+        classes_list = [item["class"] for item in results_list]
         results_counter = collections.Counter(classes_list)
-        if results_list == []:
+
+        if not results_list:
             messages.warning(
-                request, f'Model "{detection_model.name}" unable to predict. Try with another model.')
+                request, f'Model unable to predict. Try with another model.')
         else:
-            results.render()
+            # Create directory for inference images if it doesn't exist
             media_folder = settings.MEDIA_ROOT
             inferenced_img_dir = os.path.join(
                 media_folder, "inferenced_image")
             if not os.path.exists(inferenced_img_dir):
                 os.makedirs(inferenced_img_dir)
 
-            # print(dir(results))
-            for img in results.ims:
-                img_base64 = I.fromarray(img)
-                img_base64.save(
-                    f"{inferenced_img_dir}/{img_qs}", format="JPEG")
+            # Make sure class names are updated in results before plotting
+            if is_custom_model:
+                # Update class names in each result
+                for r in results:
+                    if hasattr(r, 'names'):
+                        for idx in r.names:
+                            if r.names[idx].lower() in ['cat', 'sheep']:
+                                r.names[idx] = 'snow-leopard'
 
-            # Create/update the inferencedImage instance
-            inf_img_qs, created = InferencedImage.objects.get_or_create(
-                orig_image=img_qs,
-                inf_image_path=f"{settings.MEDIA_URL}inferenced_image/{img_qs.name}",
-            )
-            inf_img_qs.detection_info = results_list
-            inf_img_qs.model_conf = modelconf
+                    # Some YOLOv8 versions might store class names differently
+                    if hasattr(r, 'model') and hasattr(r.model, 'names'):
+                        for idx in r.model.names:
+                            if r.model.names[idx].lower() in ['cat', 'sheep']:
+                                r.model.names[idx] = 'snow-leopard'
+
+                    # Another possible location for class names
+                    if hasattr(r, 'cls') and hasattr(r.cls, 'names'):
+                        for idx in r.cls.names:
+                            if r.cls.names[idx].lower() in ['cat', 'sheep']:
+                                r.cls.names[idx] = 'snow-leopard'
+
+            # Save the annotated image with a unique name based on model type
             if custom_model_id:
-                inf_img_qs.custom_model = detection_model
+                img_file_suffix = f"custom_{custom_model_id}"
+            else:
+                img_file_suffix = f"yolo_{os.path.splitext(yolo_model_name)[0]}"
+
+            # Generate filename with model identifier to allow multiple detections of same image
+            img_filename = f"{os.path.splitext(img_qs.name)[0]}_{img_file_suffix}{os.path.splitext(img_qs.name)[1]}"
+            img_path = f"{inferenced_img_dir}/{img_filename}"
+
+            # If custom model, print class names right before plotting
+            if is_custom_model:
+                print("Class names right before plotting:", model.names)
+                print("First result names:", getattr(results[0], 'names', 'No names attribute'))
+
+            # Save annotated image
+            plotted_img = results[0].plot()
+            I.fromarray(plotted_img).save(img_path, format="JPEG")
+
+            # Create a new inference image record each time (don't use get_or_create)
+            inf_img = InferencedImage(
+                orig_image=img_qs,
+                inf_image_path=f"{settings.MEDIA_URL}inferenced_image/{img_filename}",
+            )
+            inf_img.detection_info = results_list
+            inf_img.model_conf = modelconf
+            if custom_model_id:
+                inf_img.custom_model = detection_model
             elif yolo_model_name:
-                inf_img_qs.yolo_model = yolo_model_name
-            inf_img_qs.save()
-        torch.cuda.empty_cache()
+                inf_img.yolo_model = yolo_model_name
+            inf_img.save()
+
+            # Get the latest inference for display
+            inf_img_qs = inf_img
+
+        # Clear CUDA cache if using GPU
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
         # set image is_inferenced to true
         img_qs.is_inferenced = True
         img_qs.save()
+
         # Ready for rendering next image on same html page.
         imgset = img_qs.image_set
         images_qs = imgset.images.all()
@@ -133,9 +228,14 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
         self.get_pagination(context, images_qs)
 
         context["img_qs"] = img_qs
-        context["inferenced_img_dir"] = f"{settings.MEDIA_URL}inferenced_image/{img_qs}"
+        context["inferenced_img_dir"] = f"{settings.MEDIA_URL}inferenced_image/{img_filename}" if results_list else None
         context["results_list"] = results_list
         context["results_counter"] = results_counter
         context["form1"] = YoloModelForm()
         context["form2"] = InferencedImageForm()
+
+        # Add the latest inferenced image to the context
+        if results_list:
+            context["inf_img_qs"] = inf_img_qs
+
         return render(self.request, self.template_name, context)

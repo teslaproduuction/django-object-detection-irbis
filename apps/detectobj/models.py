@@ -32,13 +32,14 @@ class InferencedImage(CreationModificationDateBase):
     detection_info = models.JSONField(null=True, blank=True)
 
     YOLOMODEL_CHOICES = [
-        ('yolov5s.pt', 'yolov5s.pt'),
-        ('yolov5m.pt', 'yolov5m.pt'),
-        ('yolov5l.pt', 'yolov5l.pt'),
-        ('yolov5x.pt', 'yolov5x.pt'),
+        ('yolov8n.pt', 'yolov8n.pt'),  # Nano model
+        ('yolov8s.pt', 'yolov8s.pt'),  # Small model
+        ('yolov8m.pt', 'yolov8m.pt'),  # Medium model
+        ('yolov8l.pt', 'yolov8l.pt'),  # Large model
+        ('yolov8x.pt', 'yolov8x.pt'),  # Extra-large model
     ]
 
-    yolo_model = models.CharField(_('YOLOV5 Models'),
+    yolo_model = models.CharField(_('YOLOV8 Models'),
                                   max_length=250,
                                   null=True,
                                   blank=True,
@@ -53,3 +54,11 @@ class InferencedImage(CreationModificationDateBase):
                                      max_digits=4,
                                      null=True,
                                      blank=True)
+
+    # Add a new field to store detection timestamp for multiple detection records of the same image
+    detection_timestamp = models.DateTimeField(auto_now_add=True,
+                                               verbose_name=_('Detection Timestamp'))
+
+    class Meta:
+        # Order by most recent detection first
+        ordering = ['-detection_timestamp']
