@@ -73,7 +73,7 @@
                                         <h5 class="cart-title text-muted">
                                             {% if inf_img_qs.custom_model %}
                                                 Using Custom Model: {{ inf_img_qs.custom_model.name }} 
-                                                <span class="badge bg-info text-dark">Classes renamed to snow-leopard</span>
+                                               
                                             {% elif inf_img_qs.yolo_model %}
                                                 Using YOLO Model: {{ inf_img_qs.yolo_model }}
                                             {% endif %}
@@ -97,34 +97,34 @@
                                 inferenced image with model conf {{ inf_img_qs.model_conf }}
                                 <img src="{{ inf_img_qs.inf_image_path }}" alt="" class="img-fluid px-4 py-4"  width="100%" height="auto"/>
                         {% endif %}
-                            {% if inferenced_img_dir %}
-                                <h3 class="cart-title">inferenced Image 
-                                    <button class="btn btn-info btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#collapseExample" aria-expanded="false" aria-controls="collapseExample">
-                                        Show Results
-                                    </button>
-                                </h3>
-                            <div class="collapse" id="collapseExample">
-                                <div class="card card-body">
-                                {% if results_list|length > 0 %}
-                                <h5 class="cart-title text-muted">Objects detected : 
-                                <span class="text-success">{{ results_list|length }}</span></h5>
-                                <hr>
-                                <h5 class="cart-title text-muted">Objects Occurrances {{ results_counter }}</h5> 
-                                <hr>
-                                    {% for result in results_list %}
-                                        {% for k, v in result.items %}
-                                            {{ k }} : {{ v }}<br>
-                                        {% endfor %}
-                                        <hr>
-                                    {% endfor %}
-                                {% else %}
-                                        Model Unable to predict. Try another model.
-                                {% endif %}
-                                </div>
-                            </div>
-                                <img src="{{inferenced_img_dir}}" alt="" class="img-fluid px-4 py-4"  width="120%" height="auto"/>
-                            {% endif %}
-                    </div>
+{#                            {% if inferenced_img_dir %}#}
+{#                                <h3 class="cart-title">inferenced Image #}
+{#                                    <button class="btn btn-info btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#collapseExample" aria-expanded="false" aria-controls="collapseExample">#}
+{#                                        Show Results#}
+{#                                    </button>#}
+{#                                </h3>#}
+{#                            <div class="collapse" id="collapseExample">#}
+{#                                <div class="card card-body">#}
+{#                                {% if results_list|length > 0 %}#}
+{#                                <h5 class="cart-title text-muted">Objects detected : #}
+{#                                <span class="text-success">{{ results_list|length }}</span></h5>#}
+{#                                <hr>#}
+{#                                <h5 class="cart-title text-muted">Objects Occurrances {{ results_counter }}</h5> #}
+{#                                <hr>#}
+{#                                    {% for result in results_list %}#}
+{#                                        {% for k, v in result.items %}#}
+{#                                            {{ k }} : {{ v }}<br>#}
+{#                                        {% endfor %}#}
+{#                                        <hr>#}
+{#                                    {% endfor %}#}
+{#                                {% else %}#}
+{#                                        Model Unable to predict. Try another model.#}
+{#                                {% endif %}#}
+{#                                </div>#}
+{#                            </div>#}
+{#                                <img src="{{inferenced_img_dir}}" alt="" class="img-fluid px-4 py-4"  width="120%" height="auto"/>#}
+{#                            {% endif %}#}
+{#                    </div>#}
                 </div>
 
                 <!-- Previous Detection Results Section -->
@@ -147,7 +147,7 @@
                                                     <div class="card-header">
                                                         {% if prev_detection.custom_model %}
                                                             <strong>Custom Model:</strong> {{ prev_detection.custom_model.name }}
-                                                            <span class="badge bg-info text-dark">Classes renamed to snow-leopard</span>
+{#                                                            <span class="badge bg-info text-dark">Classes renamed to snow-leopard</span>#}
                                                         {% elif prev_detection.yolo_model %}
                                                             <strong>YOLO Model:</strong> {{ prev_detection.yolo_model }}
                                                         {% endif %}

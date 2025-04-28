@@ -13,8 +13,6 @@ apps/test_app
 *.jpg
 # */*.png 
 
-# media folder
-media
 
 # Local folder
 local

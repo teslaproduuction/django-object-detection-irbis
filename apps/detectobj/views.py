@@ -99,8 +99,8 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
             # Fix class names in model before running inference
             for idx in model.names:
                 if model.names[idx].lower() in ['cat', 'sheep']:
-                    model.names[idx] = 'snow-leopard'
-                    print(f"Updated class {idx} from 'cat'/'sheep' to 'snow-leopard'")
+                    model.names[idx] = 'irbis'
+                    print(f"Updated class {idx} from 'cat'/'sheep' to 'irbis'")
 
         # Run inference
         results = model(img, conf=modelconf, verbose=False)
@@ -112,7 +112,7 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
             if is_custom_model and hasattr(r, 'names'):
                 for idx in r.names:
                     if r.names[idx].lower() in ['cat', 'sheep']:
-                        r.names[idx] = 'snow-leopard'
+                        r.names[idx] = 'irbis'
 
             detection_boxes = []
             for box in r.boxes:
@@ -126,8 +126,8 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
 
                 # Double check and update if still cat/sheep
                 if is_custom_model and class_name.lower() in ['cat', 'sheep']:
-                    class_name = 'snow-leopard'
-                    model.names[cls_id] = 'snow-leopard'
+                    class_name = 'irbis'
+                    model.names[cls_id] = 'irbis'
 
                 detection_boxes.append({
                     "class": class_name,
@@ -162,19 +162,19 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
                     if hasattr(r, 'names'):
                         for idx in r.names:
                             if r.names[idx].lower() in ['cat', 'sheep']:
-                                r.names[idx] = 'snow-leopard'
+                                r.names[idx] = 'irbis'
 
                     # Some YOLOv8 versions might store class names differently
                     if hasattr(r, 'model') and hasattr(r.model, 'names'):
                         for idx in r.model.names:
                             if r.model.names[idx].lower() in ['cat', 'sheep']:
-                                r.model.names[idx] = 'snow-leopard'
+                                r.model.names[idx] = 'irbis'
 
                     # Another possible location for class names
                     if hasattr(r, 'cls') and hasattr(r.cls, 'names'):
                         for idx in r.cls.names:
                             if r.cls.names[idx].lower() in ['cat', 'sheep']:
-                                r.cls.names[idx] = 'snow-leopard'
+                                r.cls.names[idx] = 'irbis'
 
             # Save the annotated image with a unique name based on model type
             if custom_model_id:
