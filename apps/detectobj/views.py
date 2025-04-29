@@ -125,7 +125,7 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
                 class_name = model.names[cls_id]
 
                 # Double check and update if still cat/sheep
-                if is_custom_model and class_name.lower() in ['cat', 'sheep']:
+                if is_custom_model and class_name.lower() in ['cat', 'giraffe']:
                     class_name = 'irbis'
                     model.names[cls_id] = 'irbis'
 
@@ -161,19 +161,19 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
                 for r in results:
                     if hasattr(r, 'names'):
                         for idx in r.names:
-                            if r.names[idx].lower() in ['cat', 'sheep']:
+                            if r.names[idx].lower() in ['cat', 'giraffe']:
                                 r.names[idx] = 'irbis'
 
                     # Some YOLOv8 versions might store class names differently
                     if hasattr(r, 'model') and hasattr(r.model, 'names'):
                         for idx in r.model.names:
-                            if r.model.names[idx].lower() in ['cat', 'sheep']:
+                            if r.model.names[idx].lower() in ['cat', 'giraffe']:
                                 r.model.names[idx] = 'irbis'
 
                     # Another possible location for class names
                     if hasattr(r, 'cls') and hasattr(r.cls, 'names'):
                         for idx in r.cls.names:
-                            if r.cls.names[idx].lower() in ['cat', 'sheep']:
+                            if r.cls.names[idx].lower() in ['cat', 'giraffe']:
                                 r.cls.names[idx] = 'irbis'
 
             # Save the annotated image with a unique name based on model type
