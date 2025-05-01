@@ -1,0 +1,373 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-04-29 22:31+0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: .\apps\detectobj\forms.py:7 .\apps\detectobj\forms.py:22
+msgid "Порог уверенности модели"
+msgstr "Model confidence threshold"
+
+#: .\apps\detectobj\forms.py:13 .\apps\detectobj\forms.py:28
+msgid "Порог уверенности модели для предсказаний."
+msgstr "Model confidence threshold for predictions."
+
+#: .\apps\detectobj\forms.py:53 .\apps\detectobj\models.py:86
+msgid "Класс объекта"
+msgstr "Object class"
+
+#: .\apps\detectobj\forms.py:55
+msgid "Введите или выберите класс объекта"
+msgstr "Enter or select object class"
+
+#: .\apps\detectobj\models.py:43
+msgid "YOLOV8 Models"
+msgstr "YOLOV8 Models"
+
+#: .\apps\detectobj\models.py:53
+msgid "Model confidence"
+msgstr "Model confidence"
+
+#: .\apps\detectobj\models.py:61
+msgid "Detection Timestamp"
+msgstr "Detection Timestamp"
+
+#: .\apps\detectobj\models.py:75
+msgid "Изображение для ручной разметки"
+msgstr "Image for manual annotation"
+
+#: .\apps\detectobj\models.py:76
+msgid "Изображение"
+msgstr "Image"
+
+#: .\apps\detectobj\models.py:80
+msgid "X центра"
+msgstr "X center"
+
+#: .\apps\detectobj\models.py:80
+msgid "Нормализованная координата X центра бокса (от 0 до 1)"
+msgstr "Normalized X coordinate of box center (from 0 to 1)"
+
+#: .\apps\detectobj\models.py:81
+msgid "Y центра"
+msgstr "Y center"
+
+#: .\apps\detectobj\models.py:81
+msgid "Нормализованная координата Y центра бокса (от 0 до 1)"
+msgstr "Normalized Y coordinate of box center (from 0 to 1)"
+
+#: .\apps\detectobj\models.py:82
+msgid "Ширина"
+msgstr "Width"
+
+#: .\apps\detectobj\models.py:82
+msgid "Нормализованная ширина бокса (от 0 до 1)"
+msgstr "Normalized width of box (from 0 to 1)"
+
+#: .\apps\detectobj\models.py:83
+msgid "Высота"
+msgstr "Height"
+
+#: .\apps\detectobj\models.py:83
+msgid "Нормализованная высота бокса (от 0 до 1)"
+msgstr "Normalized height of box (from 0 to 1)"
+
+#: .\apps\detectobj\models.py:86
+msgid "Название класса объекта"
+msgstr "Object class name"
+
+#: .\apps\detectobj\models.py:87
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:101
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:118
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:168
+msgid "Достоверность"
+msgstr "Confidence"
+
+#: .\apps\detectobj\models.py:88
+msgid "Степень уверенности (для ручной разметки обычно 1)"
+msgstr "Confidence level (for manual annotation usually 1)"
+
+#: .\apps\detectobj\models.py:91
+msgid "Ручная разметка"
+msgstr "Manual annotation"
+
+#: .\apps\detectobj\models.py:99
+msgid "Создано пользователем"
+msgstr "Created by user"
+
+#: .\apps\detectobj\models.py:103
+msgid "Ручная аннотация"
+msgstr "Manual annotation"
+
+#: .\apps\detectobj\models.py:104
+msgid "Ручные аннотации"
+msgstr "Manual annotations"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:7
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:75
+msgid "Ручная разметка изображения"
+msgstr "Manual image annotation"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:80
+msgid "Инструкция:"
+msgstr "Instructions:"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:82
+msgid "Нарисуйте прямоугольник вокруг объекта, который хотите отметить"
+msgstr "Draw a rectangle around the object you want to annotate"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:83
+msgid "Введите класс объекта (например, 'снежный барс' или 'животное')"
+msgstr "Enter the object class (e.g. 'snow leopard' or 'animal')"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:84
+msgid "Добавьте столько аннотаций, сколько необходимо"
+msgstr "Add as many annotations as needed"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:85
+msgid "Нажмите 'Сохранить аннотации', когда закончите"
+msgstr "Click 'Save annotations' when you're done"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:100
+msgid "Аннотации"
+msgstr "Annotations"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:106
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:410
+msgid ""
+"Пока нет аннотаций. Нарисуйте прямоугольник на изображении, чтобы добавить."
+msgstr "No annotations yet. Draw a rectangle on the image to add one."
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:111
+msgid "Класс объекта:"
+msgstr "Object class:"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:112
+msgid "Например: снежный барс"
+msgstr "Example: snow leopard"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:125
+msgid "Добавить аннотацию"
+msgstr "Add annotation"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:147
+msgid "Сохранить аннотации"
+msgstr "Save annotations"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:150
+msgid "Отмена"
+msgstr "Cancel"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:369
+msgid "Удалить"
+msgstr "Delete"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:11
+msgid "Обнаружение объектов на изображении"
+msgstr "Object detection on image"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:27
+msgid "Выбранное изображение"
+msgstr "Selected image"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:32
+msgid "Размер изображения"
+msgstr "Image size"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:38
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:128
+msgid "Ручная разметка объектов"
+msgstr "Manual object annotation"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:45
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:160
+msgid "Модель YOLO"
+msgstr "YOLO Model"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:46
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:158
+msgid "Своя модель"
+msgstr "Custom model"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:54
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:61
+msgid "Начать обнаружение"
+msgstr "Start detection"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:71
+msgid "Последнее обработанное изображение"
+msgstr "Latest processed image"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:73
+msgid "Показать результаты"
+msgstr "Show results"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:81
+msgid "Используется своя модель"
+msgstr "Using custom model"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:84
+msgid "Используется модель YOLO"
+msgstr "Using YOLO model"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:89
+msgid "Автоматическое обнаружение объектов"
+msgstr "Automatic object detection"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:94
+msgid "Найденные объекты"
+msgstr "Detected objects"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:99
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:117
+msgid "Класс"
+msgstr "Class"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:111
+msgid "Ручное обнаружение объектов"
+msgstr "Manual object detection"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:119
+msgid "Добавлено пользователем"
+msgstr "Added by user"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:120
+msgid "Дата добавления"
+msgstr "Date added"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:126
+#: .\apps\detectobj\views.py:277
+msgid ""
+"Модель не смогла обнаружить объекты. Попробуйте другую модель или выполните "
+"ручную разметку."
+msgstr "Model couldn't detect objects. Try another model or perform manual annotation."
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:134
+msgid "Обработанное изображение с порогом уверенности"
+msgstr "Processed image with confidence threshold"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:144
+msgid "Предыдущие результаты обнаружения"
+msgstr "Previous detection results"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:146
+msgid "Показать предыдущие результаты"
+msgstr "Show previous results"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:163
+msgid "Обнаружено"
+msgstr "Detected"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:169
+msgid "Найдено объектов"
+msgstr "Objects found"
+
+#: .\apps\detectobj\views.py:57
+msgid "Аннотация успешно сохранена"
+msgstr "Annotation successfully saved"
+
+#: .\apps\detectobj\views.py:100
+msgid "Аннотации успешно сохранены"
+msgstr "Annotations successfully saved"
+
+#: .\apps\images\models.py:43
+msgid "Image Name"
+msgstr "Image Name"
+
+#: .\apps\modelmanager\models.py:29
+msgid "Name"
+msgstr "Name"
+
+#: .\apps\modelmanager\models.py:33
+msgid "Upload Model Pt/Pth File"
+msgstr "Upload Model Pt/Pth File"
+
+#: .\apps\modelmanager\models.py:40
+msgid "Class FileName"
+msgstr "Class FileName"
+
+#: .\apps\modelmanager\models.py:45
+msgid "Ml Model Classes file"
+msgstr "ML Model Classes file"
+
+#: .\apps\modelmanager\models.py:53
+msgid "Model's description"
+msgstr "Model's description"
+
+#: .\apps\modelmanager\models.py:54
+msgid "Ml Model Version"
+msgstr "ML Model Version"
+
+#: .\apps\users\models.py:9
+msgid "A"
+msgstr "A"
+
+#: .\apps\users\models.py:10
+msgid "B"
+msgstr "B"
+
+#: .\config\models.py:11
+msgid "Creation Date and Time"
+msgstr "Creation Date and Time"
+
+#: .\config\models.py:16
+msgid "Modification Date and Time"
+msgstr "Modification Date and Time"
+
+#: .\config\settings\base.py:158
+msgid "Русский"
+msgstr "Russian"
+
+#: .\config\settings\base.py:159
+msgid "Английский"
+msgstr "English"
+
+#: .\templates\partials\_nav.html:4
+msgid "Обнаружение объектов"
+msgstr "Object Detection"
+
+#: .\templates\partials\_nav.html:11
+msgid "Наборы изображений"
+msgstr "Image Sets"
+
+#: .\templates\partials\_nav.html:15
+msgid "Модели"
+msgstr "Models"
+
+#: .\templates\partials\_nav.html:18
+msgid "Загрузить модель"
+msgstr "Upload Model"
+
+#: .\templates\partials\_nav.html:19
+msgid "Список моделей"
+msgstr "Models List"
+
+#: .\templates\partials\_nav.html:21
+msgid "Мои модели"
+msgstr "My Models"
+
+#: .\templates\partials\_nav.html:49
+msgid "Выход"
+msgstr "Logout"
+
+#: .\templates\partials\_nav.html:53
+msgid "Вход"
+msgstr "Login"
+
+#: .\templates\partials\_nav.html:56
+msgid "Регистрация"
+msgstr "Register"

@@ -1,0 +1,432 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-04-29 23:41+0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || "
+"(n%100>=11 && n%100<=14)? 2 : 3);\n"
+
+#: .\apps\detectobj\forms.py:7 .\apps\detectobj\forms.py:22
+msgid "Порог уверенности модели"
+msgstr "Порог уверенности модели"
+
+#: .\apps\detectobj\forms.py:13 .\apps\detectobj\forms.py:28
+msgid "Порог уверенности модели для предсказаний."
+msgstr "Порог уверенности модели для предсказаний."
+
+#: .\apps\detectobj\forms.py:53 .\apps\detectobj\models.py:86
+msgid "Класс объекта"
+msgstr "Класс объекта"
+
+#: .\apps\detectobj\forms.py:55
+msgid "Введите или выберите класс объекта"
+msgstr "Введите или выберите класс объекта"
+
+#: .\apps\detectobj\models.py:43
+msgid "YOLOV8 Models"
+msgstr "Модели YOLOV8"
+
+#: .\apps\detectobj\models.py:53
+msgid "Model confidence"
+msgstr "Уверенность модели"
+
+#: .\apps\detectobj\models.py:61
+msgid "Detection Timestamp"
+msgstr "Временная метка обнаружения"
+
+#: .\apps\detectobj\models.py:75
+msgid "Изображение для ручной разметки"
+msgstr "Изображение для ручной разметки"
+
+#: .\apps\detectobj\models.py:76
+msgid "Изображение"
+msgstr "Изображение"
+
+#: .\apps\detectobj\models.py:80
+msgid "X центра"
+msgstr "X центра"
+
+#: .\apps\detectobj\models.py:80
+msgid "Нормализованная координата X центра бокса (от 0 до 1)"
+msgstr "Нормализованная координата X центра бокса (от 0 до 1)"
+
+#: .\apps\detectobj\models.py:81
+msgid "Y центра"
+msgstr "Y центра"
+
+#: .\apps\detectobj\models.py:81
+msgid "Нормализованная координата Y центра бокса (от 0 до 1)"
+msgstr "Нормализованная координата Y центра бокса (от 0 до 1)"
+
+#: .\apps\detectobj\models.py:82
+msgid "Ширина"
+msgstr "Ширина"
+
+#: .\apps\detectobj\models.py:82
+msgid "Нормализованная ширина бокса (от 0 до 1)"
+msgstr "Нормализованная ширина бокса (от 0 до 1)"
+
+#: .\apps\detectobj\models.py:83
+msgid "Высота"
+msgstr "Высота"
+
+#: .\apps\detectobj\models.py:83
+msgid "Нормализованная высота бокса (от 0 до 1)"
+msgstr "Нормализованная высота бокса (от 0 до 1)"
+
+#: .\apps\detectobj\models.py:86
+msgid "Название класса объекта"
+msgstr "Название класса объекта"
+
+#: .\apps\detectobj\models.py:87
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:101
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:118
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:168
+msgid "Достоверность"
+msgstr "Достоверность"
+
+#: .\apps\detectobj\models.py:88
+msgid "Степень уверенности (для ручной разметки обычно 1)"
+msgstr "Степень уверенности (для ручной разметки обычно 1)"
+
+#: .\apps\detectobj\models.py:91
+msgid "Ручная разметка"
+msgstr "Ручная разметка"
+
+#: .\apps\detectobj\models.py:99
+msgid "Создано пользователем"
+msgstr "Создано пользователем"
+
+#: .\apps\detectobj\models.py:103
+msgid "Ручная аннотация"
+msgstr "Ручная аннотация"
+
+#: .\apps\detectobj\models.py:104
+msgid "Ручные аннотации"
+msgstr "Ручные аннотации"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:7
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:75
+msgid "Ручная разметка изображения"
+msgstr "Ручная разметка изображения"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:80
+msgid "Инструкция:"
+msgstr "Инструкция:"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:82
+msgid "Нарисуйте прямоугольник вокруг объекта, который хотите отметить"
+msgstr "Нарисуйте прямоугольник вокруг объекта, который хотите отметить"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:83
+msgid "Введите класс объекта (например, 'снежный барс' или 'животное')"
+msgstr "Введите класс объекта (например, 'снежный барс' или 'животное')"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:84
+msgid "Добавьте столько аннотаций, сколько необходимо"
+msgstr "Добавьте столько аннотаций, сколько необходимо"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:85
+msgid "Нажмите 'Сохранить аннотации', когда закончите"
+msgstr "Нажмите 'Сохранить аннотации', когда закончите"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:100
+msgid "Аннотации"
+msgstr "Аннотации"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:106
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:410
+msgid ""
+"Пока нет аннотаций. Нарисуйте прямоугольник на изображении, чтобы добавить."
+msgstr ""
+"Пока нет аннотаций. Нарисуйте прямоугольник на изображении, чтобы добавить."
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:111
+msgid "Класс объекта:"
+msgstr "Класс объекта:"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:112
+msgid "Например: снежный барс"
+msgstr "Например: снежный барс"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:125
+msgid "Добавить аннотацию"
+msgstr "Добавить аннотацию"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:147
+msgid "Сохранить аннотации"
+msgstr "Сохранить аннотации"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:150
+msgid "Отмена"
+msgstr "Отмена"
+
+#: .\apps\detectobj\templates\detectobj\manual_annotation.html:369
+msgid "Удалить"
+msgstr "Удалить"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:11
+msgid "Обнаружение объектов на изображении"
+msgstr "Обнаружение объектов на изображении"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:27
+msgid "Выбранное изображение"
+msgstr "Выбранное изображение"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:32
+msgid "Размер изображения"
+msgstr "Размер изображения"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:38
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:128
+msgid "Ручная разметка объектов"
+msgstr "Ручная разметка объектов"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:45
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:160
+msgid "Модель YOLO"
+msgstr "Модель YOLO"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:46
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:158
+msgid "Своя модель"
+msgstr "Своя модель"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:54
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:61
+msgid "Начать обнаружение"
+msgstr "Начать обнаружение"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:71
+msgid "Последнее обработанное изображение"
+msgstr "Последнее обработанное изображение"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:73
+msgid "Показать результаты"
+msgstr "Показать результаты"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:81
+msgid "Используется своя модель"
+msgstr "Используется своя модель"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:84
+msgid "Используется модель YOLO"
+msgstr "Используется модель YOLO"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:89
+msgid "Автоматическое обнаружение объектов"
+msgstr "Автоматическое обнаружение объектов"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:94
+msgid "Найденные объекты"
+msgstr "Найденные объекты"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:99
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:117
+msgid "Класс"
+msgstr "Класс"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:111
+msgid "Ручное обнаружение объектов"
+msgstr "Ручное обнаружение объектов"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:119
+msgid "Добавлено пользователем"
+msgstr "Добавлено пользователем"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:120
+msgid "Дата добавления"
+msgstr "Дата добавления"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:126
+#: .\apps\detectobj\views.py:277
+msgid ""
+"Модель не смогла обнаружить объекты. Попробуйте другую модель или выполните "
+"ручную разметку."
+msgstr ""
+"Модель не смогла обнаружить объекты. Попробуйте другую модель или выполните "
+"ручную разметку."
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:134
+msgid "Обработанное изображение с порогом уверенности"
+msgstr "Обработанное изображение с порогом уверенности"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:144
+msgid "Предыдущие результаты обнаружения"
+msgstr "Предыдущие результаты обнаружения"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:146
+msgid "Показать предыдущие результаты"
+msgstr "Показать предыдущие результаты"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:163
+msgid "Обнаружено"
+msgstr "Обнаружено"
+
+#: .\apps\detectobj\templates\detectobj\select_inference_image.html:169
+msgid "Найдено объектов"
+msgstr "Найдено объектов"
+
+#: .\apps\detectobj\views.py:57
+msgid "Аннотация успешно сохранена"
+msgstr "Аннотация успешно сохранена"
+
+#: .\apps\detectobj\views.py:100
+msgid "Аннотации успешно сохранены"
+msgstr "Аннотации успешно сохранены"
+
+#: .\apps\images\models.py:43
+msgid "Image Name"
+msgstr "Название изображения"
+
+#: .\apps\modelmanager\models.py:29
+msgid "Name"
+msgstr "Название"
+
+#: .\apps\modelmanager\models.py:33
+msgid "Upload Model Pt/Pth File"
+msgstr "Загрузить файл модели Pt/Pth"
+
+#: .\apps\modelmanager\models.py:40
+msgid "Class FileName"
+msgstr "Имя файла классов"
+
+#: .\apps\modelmanager\models.py:45
+msgid "Ml Model Classes file"
+msgstr "Файл классов Ml модели"
+
+#: .\apps\modelmanager\models.py:53
+msgid "Model's description"
+msgstr "Описание модели"
+
+#: .\apps\modelmanager\models.py:54
+msgid "Ml Model Version"
+msgstr "Версия Ml модели"
+
+#: .\apps\users\models.py:9
+msgid "A"
+msgstr "А"
+
+#: .\apps\users\models.py:10
+msgid "B"
+msgstr "Б"
+
+#: .\config\models.py:11
+msgid "Creation Date and Time"
+msgstr "Дата и время создания"
+
+#: .\config\models.py:16
+msgid "Modification Date and Time"
+msgstr "Дата и время изменения"
+
+#: .\config\settings\base.py:158
+msgid "Русский"
+msgstr "Русский"
+
+#: .\config\settings\base.py:159
+msgid "Английский"
+msgstr "Английский"
+
+#: .\templates\index.html:5
+msgid "Главная страница"
+msgstr "Главная страница"
+
+#: .\templates\index.html:11
+msgid "Обнаружение объектов с помощью YOLOv8"
+msgstr "Обнаружение объектов с помощью YOLOv8"
+
+#: .\templates\index.html:13
+msgid "Возможности приложения:"
+msgstr "Возможности приложения:"
+
+#: .\templates\index.html:16
+msgid "Создание наборов изображений и загрузка нескольких изображений:"
+msgstr "Создание наборов изображений и загрузка нескольких изображений:"
+
+#: .\templates\index.html:17
+msgid "Создать набор"
+msgstr "Создать набор"
+
+#: .\templates\index.html:19
+msgid "Мои наборы"
+msgstr "Мои наборы"
+
+#: .\templates\index.html:22
+msgid "Публичные наборы"
+msgstr "Публичные наборы"
+
+#: .\templates\index.html:25
+msgid ""
+"Преобразование размера загруженных изображений в 640 x 640 (для более "
+"быстрого обнаружения)"
+msgstr ""
+"Преобразование размера загруженных изображений в 640 x 640 (для более "
+"быстрого обнаружения)"
+
+#: .\templates\index.html:26
+msgid "Загрузка собственной предобученной модели:"
+msgstr "Загрузка собственной предобученной модели:"
+
+#: .\templates\index.html:27 .\templates\partials\_nav.html:18
+msgid "Загрузить модель"
+msgstr "Загрузить модель"
+
+#: .\templates\index.html:28 .\templates\partials\_nav.html:19
+msgid "Список моделей"
+msgstr "Список моделей"
+
+#: .\templates\index.html:30
+msgid "Вы можете загрузить любую предобученную модель или модель YOLOv8."
+msgstr "Вы можете загрузить любую предобученную модель или модель YOLOv8."
+
+#: .\templates\index.html:31
+msgid ""
+"Обнаружение объектов на изображениях с помощью встроенной или своей модели."
+msgstr ""
+"Обнаружение объектов на изображениях с помощью встроенной или своей модели."
+
+#: .\templates\index.html:32
+msgid "Ручная разметка изображений, если модель не смогла распознать объект."
+msgstr "Ручная разметка изображений, если модель не смогла распознать объект."
+
+#: .\templates\partials\_nav.html:4
+msgid "Обнаружение объектов"
+msgstr "Обнаружение объектов"
+
+#: .\templates\partials\_nav.html:11
+msgid "Наборы изображений"
+msgstr "Наборы изображений"
+
+#: .\templates\partials\_nav.html:15
+msgid "Модели"
+msgstr "Модели"
+
+#: .\templates\partials\_nav.html:21
+msgid "Мои модели"
+msgstr "Мои модели"
+
+#: .\templates\partials\_nav.html:49
+msgid "Выход"
+msgstr "Выход"
+
+#: .\templates\partials\_nav.html:53
+msgid "Вход"
+msgstr "Вход"
+
+#: .\templates\partials\_nav.html:56
+msgid "Регистрация"
+msgstr "Регистрация"
