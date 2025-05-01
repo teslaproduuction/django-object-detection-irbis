@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-05-01 20:29+0300\n"
+"POT-Creation-Date: 2025-05-01 20:50+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -254,7 +254,9 @@ msgstr "Date added"
 msgid ""
 "Модель не смогла обнаружить объекты. Попробуйте другую модель или выполните "
 "ручную разметку."
-msgstr "Model couldn't detect objects. Try another model or perform manual annotation."
+msgstr ""
+"Model couldn't detect objects. Try another model or perform manual "
+"annotation."
 
 #: .\apps\detectobj\templates\detectobj\select_inference_image.html:134
 msgid "Обработанное изображение с порогом уверенности"
@@ -305,40 +307,45 @@ msgid "Confirm Delete"
 msgstr "Confirm Delete"
 
 #: .\apps\images\templates\images\imagefile_form.html:11
-#: .\apps\images\templates\images\imagefile_list.html:11
 msgid "Images upload"
 msgstr "Images upload"
 
 #: .\apps\images\templates\images\imagefile_form.html:17
-#: .\apps\images\templates\images\imagefile_list.html:17
 msgid "Upload images to"
 msgstr "Upload images to"
 
 #: .\apps\images\templates\images\imagefile_form.html:17
-#: .\apps\images\templates\images\imagefile_list.html:17
 msgid "image set"
 msgstr "image set"
 
 #: .\apps\images\templates\images\imagefile_form.html:21
-#: .\apps\images\templates\images\imagefile_list.html:21
 msgid "Drag & Drop Image files here or"
 msgstr "Drag & Drop Image files here or"
 
 #: .\apps\images\templates\images\imagefile_form.html:21
-#: .\apps\images\templates\images\imagefile_list.html:21
 msgid "click here"
 msgstr "click here"
 
 #: .\apps\images\templates\images\imagefile_form.html:21
-#: .\apps\images\templates\images\imagefile_list.html:21
 msgid "to upload"
 msgstr "to upload"
 
 #: .\apps\images\templates\images\imagefile_form.html:24
-#: .\apps\images\templates\images\imagefile_list.html:24
 #: .\apps\modelmanager\templates\modelmanager\mlmodel_form.html:23
 msgid "Submit"
 msgstr "Submit"
+
+#: .\apps\images\templates\images\imagefile_list.html:6
+msgid "Multiple images list"
+msgstr "Multiple images list"
+
+#: .\apps\images\templates\images\imagefile_list.html:22
+msgid "Detect Objects"
+msgstr "Detect Objects"
+
+#: .\apps\images\templates\images\imagefile_list.html:29
+msgid "No image to display!"
+msgstr "No image to display!"
 
 #: .\apps\images\templates\images\imageset_detail.html:5
 msgid "ImageSet"
@@ -434,6 +441,26 @@ msgstr "No public imageset created yet!"
 #: .\apps\images\templates\images\imageset_list.html:58
 msgid "No Imageset Created Yet!"
 msgstr "No Imageset Created Yet!"
+
+#: .\apps\images\templates\images\partials\_leftbar.html:3
+msgid "An item"
+msgstr "An item"
+
+#: .\apps\images\templates\images\partials\_leftbar.html:4
+msgid "A second item"
+msgstr "A second item"
+
+#: .\apps\images\templates\images\partials\_leftbar.html:5
+msgid "A third item"
+msgstr "A third item"
+
+#: .\apps\images\templates\images\partials\_leftbar.html:6
+msgid "A fourth item"
+msgstr "A fourth item"
+
+#: .\apps\images\templates\images\partials\_leftbar.html:7
+msgid "And a fifth one"
+msgstr "And a fifth one"
 
 #: .\apps\modelmanager\models.py:29
 msgid "Name"
@@ -581,8 +608,7 @@ msgstr "Public sets"
 msgid ""
 "Преобразование размера загруженных изображений в 640 x 640 (для более "
 "быстрого обнаружения)"
-msgstr ""
-"Resizing uploaded images to 640 x 640 (for faster detection)"
+msgstr "Resizing uploaded images to 640 x 640 (for faster detection)"
 
 #: .\templates\index.html:26
 msgid "Загрузка собственной предобученной модели:"
@@ -603,8 +629,7 @@ msgstr "You can upload any pre-trained model or YOLOv8 model."
 #: .\templates\index.html:31
 msgid ""
 "Обнаружение объектов на изображениях с помощью встроенной или своей модели."
-msgstr ""
-"Object detection on images using built-in or your own model."
+msgstr "Object detection on images using built-in or your own model."
 
 #: .\templates\index.html:32
 msgid "Ручная разметка изображений, если модель не смогла распознать объект."

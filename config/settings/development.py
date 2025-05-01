@@ -50,3 +50,8 @@ DEBUG_TOOLBAR_PANELS = [
     'debug_toolbar.panels.logging.LoggingPanel',
     'debug_toolbar.panels.redirects.RedirectsPanel',
 ]
+# Альтернативно, можно просто добавить этот параметр для отключения панели,
+# оставив все приложения и middleware на месте
+DEBUG_TOOLBAR_CONFIG = {
+    "SHOW_TOOLBAR_CALLBACK": lambda request: False,
+}
