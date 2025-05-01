@@ -25,7 +25,7 @@ urlpatterns += i18n_patterns(
     path('detectobj/', include("detectobj.urls", namespace="detectobj")),
     path('modelmanager/', include("modelmanager.urls", namespace="modelmanager")),
     path('images/', include("images.urls", namespace="images")),
-    prefix_default_language=False  # Не добавлять префикс для языка по умолчанию
+    prefix_default_language=True  # Не добавлять префикс для языка по умолчанию
 )
 
 # Статические и медиа файлы в режиме разработки

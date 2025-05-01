@@ -6,7 +6,11 @@ from django.http import HttpResponseRedirect, JsonResponse
 from django.contrib.auth.mixins import LoginRequiredMixin
 
 from .models import ImageSet, ImageFile
+from django.http import HttpResponse
+from django.utils.translation import get_language
 
+def debug_language(request):
+    return HttpResponse(f"Current language: {get_language()}")
 
 class ImageSetCreateView(LoginRequiredMixin, CreateView):
     model = ImageSet
