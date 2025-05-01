@@ -10,11 +10,24 @@ class Organization(models.TextChoices):
     B = 'B', _("B")
 
 
+class Gender(models.TextChoices):
+    MALE = 'M', _("Male")
+    FEMALE = 'F', _("Female")
+    OTHER = 'O', _("Other")
+    PREFER_NOT_TO_SAY = 'P', _("Prefer not to say")
+
+
 class CustomUser(AbstractUser):
     orig_name = models.CharField(
         choices=Organization.choices, max_length=2)
     age = models.PositiveIntegerField(null=True, blank=True)
-    gender = models.CharField(max_length=21, null=True, blank=True)
+    gender = models.CharField(
+        max_length=1,
+        choices=Gender.choices,
+        null=True,
+        blank=True,
+        verbose_name=_("Gender")
+    )
 
 
 class Profile(models.Model):

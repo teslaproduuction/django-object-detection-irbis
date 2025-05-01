@@ -43,7 +43,7 @@
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
         {% if user.is_authenticated %}
           <li class="nav-item">
-            <a class="nav-link active" href="#">{{ request.user|capfirst }}</a>
+            <a class="nav-link active" href="{% url 'users:profile' %}">{{ request.user|capfirst }}</a>
           </li>
           <li class="nav-item">
             <a class="nav-link active" href="{% url 'users:logout' %}">{% trans "Выход" %}</a>

@@ -1,22 +1,22 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
-
+{% load i18n %}
 
 {% block title %}
-  {{ request.user.username|capfirst }}'s Profile
+  {{ request.user.username|capfirst }}'s {% trans "Profile" %}
 {% endblock title %}
 
 {% block leftbar %}
 <div class="col-sm-3">
-    
+
 </div>
 {% endblock leftbar %}
 
 {% block content %}
     <div class="col-sm-7">
       <div class="content-section">
-        <div class="media">
-          <img class="rounded-circle account-img" src="{{ user.profile.image.url }}">
+        <div class="media d-flex align-items-center mb-4">
+          <img class="rounded-circle account-img me-3" src="{{ user.profile.image.url }}" style="width:150px; height:150px; object-fit:cover;">
           <div class="media-body">
             <h2 class="account-heading">{{ user.username }}</h2>
             <p class="text-secondary">{{ user.email }}</p>
@@ -25,12 +25,35 @@
         <form method="POST" enctype="multipart/form-data">
             {% csrf_token %}
             <fieldset class="form-group">
-                <legend class="border-bottom mb-4">Profile Info</legend>
-                {{ u_form|crispy }}
-                {{ p_form|crispy }}
+                <legend class="border-bottom mb-4">{% trans "Profile Information" %}</legend>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            {{ u_form.username|as_crispy_field }}
+                        </div>
+                        <div class="form-group mb-3">
+                            {{ u_form.email|as_crispy_field }}
+                        </div>
+                        <div class="form-group mb-3">
+                            {{ u_form.orig_name|as_crispy_field }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            {{ u_form.age|as_crispy_field }}
+                        </div>
+                        <div class="form-group mb-3">
+                            {{ u_form.gender|as_crispy_field }}
+                        </div>
+                        <div class="form-group mb-3">
+                            {{ p_form.image|as_crispy_field }}
+                        </div>
+                    </div>
+                </div>
             </fieldset>
             <div class="form-group">
-                <button class="btn btn-outline-info" type="submit">Update</button>
+                <button class="btn btn-outline-info" type="submit">{% trans "Update" %}</button>
             </div>
         </form>
       </div>
