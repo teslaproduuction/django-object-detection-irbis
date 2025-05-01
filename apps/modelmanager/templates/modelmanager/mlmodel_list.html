@@ -1,27 +1,28 @@
 {% extends 'base.html' %}
 {% load static crispy_forms_tags %}
+{% load i18n %}
 
 {% block title %}
-User Model 
+{% trans "User Model" %}
 {% endblock title %}
 
 {% block leftbar %}
 <div class="col-md-3">
     <ul class="list-group list-group-flush">
         {% if 'public' in request.path %}
-            <li class="list-group-item active"> Public ML Models</li>
+            <li class="list-group-item active">{% trans "Public ML Models" %}</li>
             <li class="list-group-item">
-                <a href="{% url 'modelmanager:user_mlmodel_list_url' %}">My ML Models</a>
+                <a href="{% url 'modelmanager:user_mlmodel_list_url' %}">{% trans "My ML Models" %}</a>
             </li>
         {% elif 'user' in request.path %}
             <li class="list-group-item">
-                <a href="{% url 'modelmanager:public_mlmodel_list_url' %}">Public ML Models</a>
+                <a href="{% url 'modelmanager:public_mlmodel_list_url' %}">{% trans "Public ML Models" %}</a>
             </li>
-            <li class="list-group-item active">My ML Models</li>
+            <li class="list-group-item active">{% trans "My ML Models" %}</li>
         {% endif %}
     </ul>
     <br>
-    
+
 </div>
 {% endblock leftbar %}
 
@@ -35,16 +36,16 @@ User Model
                     </div>
                     <div class="card-body">
                         <ul class="list-group list-group-flush">
-                            <li class="list-group-item">Uploaded by: {{ model.uploader|capfirst }}</li>
-                            <li class="list-group-item">Class file name: {{ model.class_filename }}</li>
-                            <li class="list-group-item">classes: {{ model.get_classesname }}</li>
-                            <li class="list-group-item">Version: {{ model.version }}</li>
-                            <li class="list-group-item">Description: {{ model.description }}</li>
+                            <li class="list-group-item">{% trans "Uploaded by" %}: {{ model.uploader|capfirst }}</li>
+                            <li class="list-group-item">{% trans "Class file name" %}: {{ model.class_filename }}</li>
+                            <li class="list-group-item">{% trans "Classes" %}: {{ model.get_classesname }}</li>
+                            <li class="list-group-item">{% trans "Version" %}: {{ model.version }}</li>
+                            <li class="list-group-item">{% trans "Description" %}: {{ model.description }}</li>
                         </ul>
                     </div>
                 </div>
             {% endfor %}
-            
+
         {% elif public_models %}
                 {% for model in public_models %}
                     <div class="card mb-3">
@@ -53,17 +54,17 @@ User Model
                         </div>
                         <div class="card-body">
                             <ul class="list-group list-group-flush">
-                                <li class="list-group-item">Uploaded by: {{ model.uploader|capfirst }}</li>
-                                <li class="list-group-item">Class file name: {{ model.class_filename }}</li>
-                                <li class="list-group-item">classes: {{ model.get_classesname }}</li>
-                                <li class="list-group-item">Version: {{ model.version }}</li>
-                                <li class="list-group-item">Description: {{ model.description }}</li>
+                                <li class="list-group-item">{% trans "Uploaded by" %}: {{ model.uploader|capfirst }}</li>
+                                <li class="list-group-item">{% trans "Class file name" %}: {{ model.class_filename }}</li>
+                                <li class="list-group-item">{% trans "Classes" %}: {{ model.get_classesname }}</li>
+                                <li class="list-group-item">{% trans "Version" %}: {{ model.version }}</li>
+                                <li class="list-group-item">{% trans "Description" %}: {{ model.description }}</li>
                             </ul>
                         </div>
                     </div>
                 {% endfor %}
         {% else %}
-        No Model uploaded yet.
+        {% trans "No Model uploaded yet." %}
         {% endif %}
     </div>
 {% endblock content %}

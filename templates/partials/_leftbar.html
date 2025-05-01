@@ -1,6 +1,7 @@
 {% load static %}
+{% load i18n %}
 {% if imageset %}
-<a type="button" class="btn btn-sm btn-outline-info mb-2" href="{% url 'images:upload_images_url' imageset.id %}">Upload More images</a>
+<a type="button" class="btn btn-sm btn-outline-info mb-2" href="{% url 'images:upload_images_url' imageset.id %}">{% trans "Upload More images" %}</a>
 {% endif %}
 {% if image %}
 <div class="card">

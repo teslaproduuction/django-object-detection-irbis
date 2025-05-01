@@ -1,35 +1,35 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static crispy_forms_tags %}
+{% load i18n %}
+
+{% block on_page_css %}
+  <link rel="stylesheet" type="text/css" href="{% static 'css/basic.min.css' %}" >
+  <link rel="stylesheet" type="text/css" href="{% static 'css/dropzone.min.css' %}" />
+{% endblock on_page_css %}
 
 {% block title %}
-    Multiple images list
+{{imageset.name|capfirst}} - {% trans "Images upload" %}
 {% endblock title %}
 
+
 {% block content %}
-<div class="col-md-9 mt-2">
-    <div class="row">
-        {% for image in images %}
-            {% with image.get_imageurl as imgurl %}
-            <div class="col-sm-3">
-                <a href="{{ imgurl }}" data-toggle="lightbox" data-gallery="image-gallery">
-                    <img src="{{ imgurl }}" alt="" class="img-fluid mx-1 my-1" width="250px" height="250px" />
-                </a>
-                <a href="{% url 'images:image_delete_url' image.image_set.id image.id %}" class="btn btn-sm btn-outline-success mx-1 my-1">
-                    <img src="{% static 'img/cross.png' %}" alt="" />
-                </a>
-                <a href="{% url 'detectobj:detection_image_detail_url' image.id %}" class="btn btn-sm btn-outline-success mx-1 my-1">
-                    Detect Objects
-                </a>
+    <div class="col-md-11 mx-4">
+        <h4 class="mb-4">{% trans "Upload images to" %} {{ imageset.name|capfirst }} {% trans "image set" %}.</h4>
+        <form action="{% url 'images:upload_images_url' imageset.id %}" method="post" enctype="multipart/form-data" class="dropzone dz" id="DzImageImport" >
+            {% csrf_token %}
+            <div class="dz-default dz-message upload_client">
+                {% trans "Drag & Drop Image files here or" %} <strong>{% trans "click here" %}</strong> {% trans "to upload" %}.
             </div>
-            {% endwith %}
-        {%empty%}
-            <div class="card">
-                <div class="card-body">
-                    Nil image to display!
-                </div>
-            </div>
-        {% endfor %}
+        </form>
+        <button id="imagesUploadBtn" type="submit" class="btn btn-sm btn-outline-info mt-2">{% trans "Submit" %}</button>
     </div>
-    
-</div>
 {% endblock content %}
+
+{% block on_page_js %}
+<script src="{% static 'js/dropzone.min.js' %}"></script>
+
+<script>
+    {% include 'images/partials/_dzconfig.html' %}
+</script>
+
+{% endblock on_page_js %}

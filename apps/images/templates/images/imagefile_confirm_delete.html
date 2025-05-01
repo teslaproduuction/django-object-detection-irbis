@@ -1,8 +1,9 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load i18n %}
 
 {% block title %}
-    Confirm delete - Image in {{ object.image_set.name }}
+    {% trans "Confirm delete" %} - {% trans "Image in" %} {{ object.image_set.name }}
 {% endblock title %}
 
 {% block leftbar %}
@@ -16,9 +17,9 @@
     <form action="" method="post">
     {% csrf_token %}
       <div class="alert alert-danger" role="alert">
-      You are about to delete the Image "{{ object.get_filename|capfirst }}".
+      {% trans "You are about to delete the Image" %} "{{ object.get_filename|capfirst }}".
       </div>
-    <input type="submit" value="Confirm Delete" class="btn btn-outline-danger">
+    <input type="submit" value="{% trans 'Confirm Delete' %}" class="btn btn-outline-danger">
   </form>
 </div>
 {% endblock content %}

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-04-29 22:31+0300\n"
+"POT-Creation-Date: 2025-05-01 20:29+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -128,11 +128,11 @@ msgstr "Instructions:"
 
 #: .\apps\detectobj\templates\detectobj\manual_annotation.html:82
 msgid "Нарисуйте прямоугольник вокруг объекта, который хотите отметить"
-msgstr "Draw a rectangle around the object you want to annotate"
+msgstr "Draw a rectangle around the object you want to mark"
 
 #: .\apps\detectobj\templates\detectobj\manual_annotation.html:83
 msgid "Введите класс объекта (например, 'снежный барс' или 'животное')"
-msgstr "Enter the object class (e.g. 'snow leopard' or 'animal')"
+msgstr "Enter the object class (for example, 'snow leopard' or 'animal')"
 
 #: .\apps\detectobj\templates\detectobj\manual_annotation.html:84
 msgid "Добавьте столько аннотаций, сколько необходимо"
@@ -288,6 +288,153 @@ msgstr "Annotations successfully saved"
 msgid "Image Name"
 msgstr "Image Name"
 
+#: .\apps\images\templates\images\imagefile_confirm_delete.html:6
+msgid "Confirm delete"
+msgstr "Confirm delete"
+
+#: .\apps\images\templates\images\imagefile_confirm_delete.html:6
+msgid "Image in"
+msgstr "Image in"
+
+#: .\apps\images\templates\images\imagefile_confirm_delete.html:20
+msgid "You are about to delete the Image"
+msgstr "You are about to delete the Image"
+
+#: .\apps\images\templates\images\imagefile_confirm_delete.html:22
+msgid "Confirm Delete"
+msgstr "Confirm Delete"
+
+#: .\apps\images\templates\images\imagefile_form.html:11
+#: .\apps\images\templates\images\imagefile_list.html:11
+msgid "Images upload"
+msgstr "Images upload"
+
+#: .\apps\images\templates\images\imagefile_form.html:17
+#: .\apps\images\templates\images\imagefile_list.html:17
+msgid "Upload images to"
+msgstr "Upload images to"
+
+#: .\apps\images\templates\images\imagefile_form.html:17
+#: .\apps\images\templates\images\imagefile_list.html:17
+msgid "image set"
+msgstr "image set"
+
+#: .\apps\images\templates\images\imagefile_form.html:21
+#: .\apps\images\templates\images\imagefile_list.html:21
+msgid "Drag & Drop Image files here or"
+msgstr "Drag & Drop Image files here or"
+
+#: .\apps\images\templates\images\imagefile_form.html:21
+#: .\apps\images\templates\images\imagefile_list.html:21
+msgid "click here"
+msgstr "click here"
+
+#: .\apps\images\templates\images\imagefile_form.html:21
+#: .\apps\images\templates\images\imagefile_list.html:21
+msgid "to upload"
+msgstr "to upload"
+
+#: .\apps\images\templates\images\imagefile_form.html:24
+#: .\apps\images\templates\images\imagefile_list.html:24
+#: .\apps\modelmanager\templates\modelmanager\mlmodel_form.html:23
+msgid "Submit"
+msgstr "Submit"
+
+#: .\apps\images\templates\images\imageset_detail.html:5
+msgid "ImageSet"
+msgstr "ImageSet"
+
+#: .\apps\images\templates\images\imageset_detail.html:12
+msgid "Image set"
+msgstr "Image set"
+
+#: .\apps\images\templates\images\imageset_detail.html:16
+#: .\apps\images\templates\images\imageset_list.html:29
+#: .\apps\images\templates\images\imageset_list.html:50
+#: .\apps\modelmanager\templates\modelmanager\mlmodel_list.html:39
+#: .\apps\modelmanager\templates\modelmanager\mlmodel_list.html:57
+msgid "Uploaded by"
+msgstr "Uploaded by"
+
+#: .\apps\images\templates\images\imageset_detail.html:17
+#: .\apps\images\templates\images\imageset_list.html:30
+#: .\apps\images\templates\images\imageset_list.html:51
+msgid "Total images"
+msgstr "Total images"
+
+#: .\apps\images\templates\images\imageset_detail.html:18
+#: .\apps\modelmanager\templates\modelmanager\mlmodel_list.html:43
+#: .\apps\modelmanager\templates\modelmanager\mlmodel_list.html:61
+msgid "Description"
+msgstr "Description"
+
+#: .\apps\images\templates\images\imageset_detail.html:19
+msgid "Created on"
+msgstr "Created on"
+
+#: .\apps\images\templates\images\imageset_detail.html:20
+msgid "Updated on"
+msgstr "Updated on"
+
+#: .\apps\images\templates\images\imageset_detail.html:23
+msgid "Upload images"
+msgstr "Upload images"
+
+#: .\apps\images\templates\images\imageset_detail.html:24
+msgid "Update ImageSet"
+msgstr "Update ImageSet"
+
+#: .\apps\images\templates\images\imageset_detail.html:26
+#: .\apps\images\templates\images\imageset_detail.html:29
+msgid "View Images"
+msgstr "View Images"
+
+#: .\apps\images\templates\images\imageset_form.html:7
+msgid "Update images set"
+msgstr "Update images set"
+
+#: .\apps\images\templates\images\imageset_form.html:9
+msgid "Create images set"
+msgstr "Create images set"
+
+#: .\apps\images\templates\images\imageset_form.html:23
+#: .\apps\images\templates\images\imageset_form.html:34
+msgid "Update"
+msgstr "Update"
+
+#: .\apps\images\templates\images\imageset_form.html:25
+#: .\apps\images\templates\images\imageset_form.html:36
+msgid "Create"
+msgstr "Create"
+
+#: .\apps\images\templates\images\imageset_form.html:27
+msgid "Image Set"
+msgstr "Image Set"
+
+#: .\apps\images\templates\images\imageset_list.html:6
+msgid "Imagesets"
+msgstr "Imagesets"
+
+#: .\apps\images\templates\images\imageset_list.html:13
+msgid "Create imageset"
+msgstr "Create imageset"
+
+#: .\apps\images\templates\images\imageset_list.html:17
+msgid "Public image sets"
+msgstr "Public image sets"
+
+#: .\apps\images\templates\images\imageset_list.html:18
+msgid "My image sets"
+msgstr "My image sets"
+
+#: .\apps\images\templates\images\imageset_list.html:37
+msgid "No public imageset created Yet!"
+msgstr "No public imageset created yet!"
+
+#: .\apps\images\templates\images\imageset_list.html:58
+msgid "No Imageset Created Yet!"
+msgstr "No Imageset Created Yet!"
+
 #: .\apps\modelmanager\models.py:29
 msgid "Name"
 msgstr "Name"
@@ -312,6 +459,47 @@ msgstr "Model's description"
 msgid "Ml Model Version"
 msgstr "ML Model Version"
 
+#: .\apps\modelmanager\templates\modelmanager\mlmodel_form.html:6
+msgid "Upload ML Model"
+msgstr "Upload ML Model"
+
+#: .\apps\modelmanager\templates\modelmanager\mlmodel_form.html:17
+msgid "Upload Pre-trained Model"
+msgstr "Upload Pre-trained Model"
+
+#: .\apps\modelmanager\templates\modelmanager\mlmodel_list.html:6
+msgid "User Model"
+msgstr "User Model"
+
+#: .\apps\modelmanager\templates\modelmanager\mlmodel_list.html:13
+#: .\apps\modelmanager\templates\modelmanager\mlmodel_list.html:19
+msgid "Public ML Models"
+msgstr "Public ML Models"
+
+#: .\apps\modelmanager\templates\modelmanager\mlmodel_list.html:15
+#: .\apps\modelmanager\templates\modelmanager\mlmodel_list.html:21
+msgid "My ML Models"
+msgstr "My ML Models"
+
+#: .\apps\modelmanager\templates\modelmanager\mlmodel_list.html:40
+#: .\apps\modelmanager\templates\modelmanager\mlmodel_list.html:58
+msgid "Class file name"
+msgstr "Class file name"
+
+#: .\apps\modelmanager\templates\modelmanager\mlmodel_list.html:41
+#: .\apps\modelmanager\templates\modelmanager\mlmodel_list.html:59
+msgid "Classes"
+msgstr "Classes"
+
+#: .\apps\modelmanager\templates\modelmanager\mlmodel_list.html:42
+#: .\apps\modelmanager\templates\modelmanager\mlmodel_list.html:60
+msgid "Version"
+msgstr "Version"
+
+#: .\apps\modelmanager\templates\modelmanager\mlmodel_list.html:67
+msgid "No Model uploaded yet."
+msgstr "No Model uploaded yet."
+
 #: .\apps\users\models.py:9
 msgid "A"
 msgstr "A"
@@ -319,6 +507,27 @@ msgstr "A"
 #: .\apps\users\models.py:10
 msgid "B"
 msgstr "B"
+
+#: .\apps\users\templates\users\login.html:6
+#: .\apps\users\templates\users\login.html:22
+msgid "Log In"
+msgstr "Log In"
+
+#: .\apps\users\templates\users\login.html:26
+msgid "Login"
+msgstr "Login"
+
+#: .\apps\users\templates\users\login.html:28
+msgid "Forgot Password?"
+msgstr "Forgot Password?"
+
+#: .\apps\users\templates\users\login.html:34
+msgid "Need An Account?"
+msgstr "Need An Account?"
+
+#: .\apps\users\templates\users\login.html:34
+msgid "Sign Up Now"
+msgstr "Sign Up Now"
 
 #: .\config\models.py:11
 msgid "Creation Date and Time"
@@ -336,6 +545,75 @@ msgstr "Russian"
 msgid "Английский"
 msgstr "English"
 
+#: .\templates\base.html:27
+msgid "My Website"
+msgstr "My Website"
+
+#: .\templates\index.html:5
+msgid "Главная страница"
+msgstr "Main page"
+
+#: .\templates\index.html:11
+msgid "Обнаружение объектов с помощью YOLOv8"
+msgstr "Object detection with YOLOv8"
+
+#: .\templates\index.html:13
+msgid "Возможности приложения:"
+msgstr "Application features:"
+
+#: .\templates\index.html:16
+msgid "Создание наборов изображений и загрузка нескольких изображений:"
+msgstr "Creating image sets and uploading multiple images:"
+
+#: .\templates\index.html:17
+msgid "Создать набор"
+msgstr "Create set"
+
+#: .\templates\index.html:19
+msgid "Мои наборы"
+msgstr "My sets"
+
+#: .\templates\index.html:22
+msgid "Публичные наборы"
+msgstr "Public sets"
+
+#: .\templates\index.html:25
+msgid ""
+"Преобразование размера загруженных изображений в 640 x 640 (для более "
+"быстрого обнаружения)"
+msgstr ""
+"Resizing uploaded images to 640 x 640 (for faster detection)"
+
+#: .\templates\index.html:26
+msgid "Загрузка собственной предобученной модели:"
+msgstr "Uploading your own pre-trained model:"
+
+#: .\templates\index.html:27 .\templates\partials\_nav.html:18
+msgid "Загрузить модель"
+msgstr "Upload model"
+
+#: .\templates\index.html:28 .\templates\partials\_nav.html:19
+msgid "Список моделей"
+msgstr "Models list"
+
+#: .\templates\index.html:30
+msgid "Вы можете загрузить любую предобученную модель или модель YOLOv8."
+msgstr "You can upload any pre-trained model or YOLOv8 model."
+
+#: .\templates\index.html:31
+msgid ""
+"Обнаружение объектов на изображениях с помощью встроенной или своей модели."
+msgstr ""
+"Object detection on images using built-in or your own model."
+
+#: .\templates\index.html:32
+msgid "Ручная разметка изображений, если модель не смогла распознать объект."
+msgstr "Manual image annotation if the model couldn't detect an object."
+
+#: .\templates\partials\_leftbar.html:4
+msgid "Upload More images"
+msgstr "Upload More images"
+
 #: .\templates\partials\_nav.html:4
 msgid "Обнаружение объектов"
 msgstr "Object Detection"
@@ -348,17 +626,9 @@ msgstr "Image Sets"
 msgid "Модели"
 msgstr "Models"
 
-#: .\templates\partials\_nav.html:18
-msgid "Загрузить модель"
-msgstr "Upload Model"
-
-#: .\templates\partials\_nav.html:19
-msgid "Список моделей"
-msgstr "Models List"
-
 #: .\templates\partials\_nav.html:21
 msgid "Мои модели"
-msgstr "My Models"
+msgstr "My models"
 
 #: .\templates\partials\_nav.html:49
 msgid "Выход"
@@ -371,3 +641,19 @@ msgstr "Login"
 #: .\templates\partials\_nav.html:56
 msgid "Регистрация"
 msgstr "Register"
+
+#: .\templates\partials\_paginator.html:4
+msgid "First"
+msgstr "First"
+
+#: .\templates\partials\_paginator.html:5
+msgid "Previous"
+msgstr "Previous"
+
+#: .\templates\partials\_paginator.html:17
+msgid "Next"
+msgstr "Next"
+
+#: .\templates\partials\_paginator.html:18
+msgid "Last"
+msgstr "Last"

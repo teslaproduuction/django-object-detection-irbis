@@ -1,4 +1,5 @@
 {% load static %}
+{% load i18n %}
 <!doctype html>
 <html lang="en">
 <head>
@@ -23,7 +24,7 @@
     {# Extra header stuff (scripts, styles, metadata, etc) #}
   {% endblock %}
 
-  <title>My Website - {% block title %}{% endblock %}</title>
+  <title>{% trans "My Website" %} - {% block title %}{% endblock %}</title>
 </head>
 <body class="{% block body_class %}{% endblock %}">
   {% include 'partials/_nav.html' %}
