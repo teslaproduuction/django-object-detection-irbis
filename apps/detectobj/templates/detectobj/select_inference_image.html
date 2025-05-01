@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
 {% load crispy_forms_tags %}
 {% load static %}
-
+{% load i18n %}
 
 {% block on_page_css %}
   <link href="{% static 'css/ekko-lightbox.css' %}" rel="stylesheet">
 {% endblock on_page_css %}
 
 {% block title %}
-    Select Detection Image
+    {% trans "Обнаружение объектов на изображении" %}
 {% endblock title %}
 
 {% block leftbar %}
@@ -24,20 +24,26 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-sm-5">
-                        <h3 class="cart-title">Selected Image</h3>
+                        <h3 class="cart-title">{% trans "Выбранное изображение" %}</h3>
                         <a href="{{ img_qs.get_imageurl }}" data-toggle="lightbox" data-gallery="image-gallery">
                             <img src="{{ img_qs.get_imageurl }}" class="border border-2 border-primary rounded mb-4" width="250" height="auto" />
                         </a>
                         <div class="">
-                            Image shape: {{ img_qs.get_imgshape }}
+                            {% trans "Размер изображения" %}: {{ img_qs.get_imgshape }}
+                        </div>
 
+                        <!-- Добавляем кнопку для ручной разметки -->
+                        <div class="mt-3">
+                            <a href="{% url 'detectobj:manual_annotation_url' img_qs.id %}" class="btn btn-warning">
+                                {% trans "Ручная разметка объектов" %}
+                            </a>
                         </div>
                     </div>
                     <div class="col-sm-7">
                         <nav>
                             <div class="nav nav-tabs" id="nav-tab" role="tablist">
-                                <button class="nav-link active" id="nav-yolo-tab" data-bs-toggle="tab" data-bs-target="#nav-yolo" type="button" role="tab" aria-controls="nav-yolo" aria-selected="true">Yolo Model</button>
-                                <button class="nav-link" id="nav-custom-tab" data-bs-toggle="tab" data-bs-target="#nav-custom" type="button" role="tab" aria-controls="nav-custom" aria-selected="false">Custom Model</button>
+                                <button class="nav-link active" id="nav-yolo-tab" data-bs-toggle="tab" data-bs-target="#nav-yolo" type="button" role="tab" aria-controls="nav-yolo" aria-selected="true">{% trans "Модель YOLO" %}</button>
+                                <button class="nav-link" id="nav-custom-tab" data-bs-toggle="tab" data-bs-target="#nav-custom" type="button" role="tab" aria-controls="nav-custom" aria-selected="false">{% trans "Своя модель" %}</button>
                             </div>
                         </nav>
                         <div class="tab-content" id="nav-tabContent">
@@ -45,14 +51,14 @@
                                 <form class="mt-2 mb-2" action="" method="POST">
                                     {% csrf_token %}
                                     {{ form1|crispy }}
-                                    <button type="submit" class="btn btn-outline-info btn-sm">Start detection</button>
+                                    <button type="submit" class="btn btn-outline-info btn-sm">{% trans "Начать обнаружение" %}</button>
                                 </form>
                             </div>
                             <div class="tab-pane fade" id="nav-custom" role="tabpanel" aria-labelledby="nav-custom-tab" tabindex="0">
                                 <form class="mt-2 mb-2" action="" method="POST">
                                     {% csrf_token %}
                                     {{ form2|crispy }}
-                                    <button type="submit" class="btn btn-outline-info btn-sm">Start detection</button>
+                                    <button type="submit" class="btn btn-outline-info btn-sm">{% trans "Начать обнаружение" %}</button>
                                 </form>
                             </div>
                         </div>
@@ -62,69 +68,72 @@
                 <div class="row">
                     <div class="col-sm-12">
                         {% if inf_img_qs %}
-                            <h3 class="cart-title">Latest inferenced Image 
+                            <h3 class="cart-title">{% trans "Последнее обработанное изображение" %}
                             <button class="btn btn-info btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#collapseExample" aria-expanded="false" aria-controls="collapseExample">
-                                Show Results
+                                {% trans "Показать результаты" %}
                             </button>
                             </h3>
                             <div class="collapse" id="collapseExample">
                                 <div class="card card-body">
-                                    {% if inf_img_qs.detection_info|length > 0 %}
+                                    {% if inf_img_qs.detection_info|length > 0 or manual_annotations|length > 0 %}
                                         <h5 class="cart-title text-muted">
                                             {% if inf_img_qs.custom_model %}
-                                                Using Custom Model: {{ inf_img_qs.custom_model.name }} 
-                                               
+                                                {% trans "Используется своя модель" %}: {{ inf_img_qs.custom_model.name }}
+
                                             {% elif inf_img_qs.yolo_model %}
-                                                Using YOLO Model: {{ inf_img_qs.yolo_model }}
+                                                {% trans "Используется модель YOLO" %}: {{ inf_img_qs.yolo_model }}
                                             {% endif %}
                                         </h5>
-                                        <h5 class="cart-title text-muted">Objects detected : 
+
+                                        <!-- Автоматическое обнаружение -->
+                                        <h5 class="cart-title text-muted">{% trans "Автоматическое обнаружение объектов" %}:
                                         <span class="text-success">{{ inf_img_qs.detection_info|length }}</span></h5>
-                                        <hr>
-                                        <h5 class="cart-title text-muted">Objects Occurrances {{ results_counter }}</h5> 
-                                        <hr>
-                                        {% for result in inf_img_qs.detection_info %}
-                                            {% for k, v in result.items %}
-                                                {{ k }} : {{ v }}<br>
-                                            {% endfor %}
+
+                                        {% if inf_img_qs.detection_info|length > 0 %}
                                             <hr>
-                                        {% endfor %}
+                                            <h5 class="cart-title text-muted">{% trans "Найденные объекты" %} {{ results_counter }}</h5>
+                                            <hr>
+                                            {% for result in inf_img_qs.detection_info %}
+                                                {% for k, v in result.items %}
+                                                    {% if k == "class" %}
+                                                        <strong>{% trans "Класс" %}</strong>: {{ v }}<br>
+                                                    {% elif k == "confidence" %}
+                                                        <strong>{% trans "Достоверность" %}</strong>: {{ v|floatformat:2 }}<br>
+                                                    {% else %}
+                                                        <strong>{{ k }}</strong>: {{ v }}<br>
+                                                    {% endif %}
+                                                {% endfor %}
+                                                <hr>
+                                            {% endfor %}
+                                        {% endif %}
+
+                                        <!-- Ручное обнаружение -->
+                                        <h5 class="cart-title text-muted">{% trans "Ручное обнаружение объектов" %}:
+                                        <span class="text-success">{{ manual_annotations|length }}</span></h5>
+
+                                        {% if manual_annotations|length > 0 %}
+                                            <hr>
+                                            {% for annotation in manual_annotations %}
+                                                <strong>{% trans "Класс" %}</strong>: {{ annotation.class_name }}<br>
+                                                <strong>{% trans "Достоверность" %}</strong>: {{ annotation.confidence|floatformat:2 }}<br>
+                                                <strong>{% trans "Добавлено пользователем" %}</strong>: {{ annotation.created_by.username }}<br>
+                                                <strong>{% trans "Дата добавления" %}</strong>: {{ annotation.created }}<br>
+                                                <hr>
+                                            {% endfor %}
+                                        {% endif %}
                                     {% else %}
-                                        Model Unable to predict. Try another model.
+                                        <div class="alert alert-warning">
+                                            {% trans "Модель не смогла обнаружить объекты. Попробуйте другую модель или выполните ручную разметку." %}
+                                            <a href="{% url 'detectobj:manual_annotation_url' img_qs.id %}" class="btn btn-warning mt-2">
+                                                {% trans "Ручная разметка объектов" %}
+                                            </a>
+                                        </div>
                                     {% endif %}
                                 </div>
                             </div>
-                                inferenced image with model conf {{ inf_img_qs.model_conf }}
+                                {% trans "Обработанное изображение с порогом уверенности" %} {{ inf_img_qs.model_conf }}
                                 <img src="{{ inf_img_qs.inf_image_path }}" alt="" class="img-fluid px-4 py-4"  width="100%" height="auto"/>
                         {% endif %}
-{#                            {% if inferenced_img_dir %}#}
-{#                                <h3 class="cart-title">inferenced Image #}
-{#                                    <button class="btn btn-info btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#collapseExample" aria-expanded="false" aria-controls="collapseExample">#}
-{#                                        Show Results#}
-{#                                    </button>#}
-{#                                </h3>#}
-{#                            <div class="collapse" id="collapseExample">#}
-{#                                <div class="card card-body">#}
-{#                                {% if results_list|length > 0 %}#}
-{#                                <h5 class="cart-title text-muted">Objects detected : #}
-{#                                <span class="text-success">{{ results_list|length }}</span></h5>#}
-{#                                <hr>#}
-{#                                <h5 class="cart-title text-muted">Objects Occurrances {{ results_counter }}</h5> #}
-{#                                <hr>#}
-{#                                    {% for result in results_list %}#}
-{#                                        {% for k, v in result.items %}#}
-{#                                            {{ k }} : {{ v }}<br>#}
-{#                                        {% endfor %}#}
-{#                                        <hr>#}
-{#                                    {% endfor %}#}
-{#                                {% else %}#}
-{#                                        Model Unable to predict. Try another model.#}
-{#                                {% endif %}#}
-{#                                </div>#}
-{#                            </div>#}
-{#                                <img src="{{inferenced_img_dir}}" alt="" class="img-fluid px-4 py-4"  width="120%" height="auto"/>#}
-{#                            {% endif %}#}
-{#                    </div>#}
                 </div>
 </div>
                 <!-- Previous Detection Results Section -->
@@ -132,9 +141,9 @@
                 <hr>
                 <div class="row">
                     <div class="col-sm-12">
-                        <h3 class="cart-title">Previous Detection Results 
+                        <h3 class="cart-title">{% trans "Предыдущие результаты обнаружения" %}
                             <button class="btn btn-info btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePrevious" aria-expanded="false" aria-controls="collapsePrevious">
-                                Show Previous Results
+                                {% trans "Показать предыдущие результаты" %}
                             </button>
                         </h3>
                         <div class="collapse" id="collapsePrevious">
@@ -146,19 +155,18 @@
                                                 <div class="card">
                                                     <div class="card-header">
                                                         {% if prev_detection.custom_model %}
-                                                            <strong>Custom Model:</strong> {{ prev_detection.custom_model.name }}
-{#                                                            <span class="badge bg-info text-dark">Classes renamed to snow-leopard</span>#}
+                                                            <strong>{% trans "Своя модель" %}:</strong> {{ prev_detection.custom_model.name }}
                                                         {% elif prev_detection.yolo_model %}
-                                                            <strong>YOLO Model:</strong> {{ prev_detection.yolo_model }}
+                                                            <strong>{% trans "Модель YOLO" %}:</strong> {{ prev_detection.yolo_model }}
                                                         {% endif %}
                                                         <br>
-                                                        <small>Detected at: {{ prev_detection.detection_timestamp }}</small>
+                                                        <small>{% trans "Обнаружено" %}: {{ prev_detection.detection_timestamp }}</small>
                                                     </div>
                                                     <div class="card-body">
                                                         <img src="{{ prev_detection.inf_image_path }}" alt="" class="img-fluid" />
                                                         <p class="mt-2">
-                                                            <strong>Confidence:</strong> {{ prev_detection.model_conf }}<br>
-                                                            <strong>Detections:</strong> {{ prev_detection.detection_info|length }}
+                                                            <strong>{% trans "Достоверность" %}:</strong> {{ prev_detection.model_conf }}<br>
+                                                            <strong>{% trans "Найдено объектов" %}:</strong> {{ prev_detection.detection_info|length }}
                                                         </p>
                                                     </div>
                                                 </div>

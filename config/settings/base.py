@@ -10,6 +10,7 @@ import sys
 import json
 
 from django.core.exceptions import ImproperlyConfigured
+from django.utils.translation import gettext_lazy as _
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -69,6 +70,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",  # Добавлено для поддержки локализации
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -142,13 +144,25 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
-LANGUAGE_CODE = "en-us"
+# Настройки интернационализации
+LANGUAGE_CODE = 'ru'  # Установка русского языка по умолчанию
 
-TIME_ZONE = "UTC"
+TIME_ZONE = 'Europe/Moscow'  # Устанавливаем часовой пояс
 
-USE_I18N = True
+USE_I18N = True  # Включить интернационализацию
+USE_L10N = True  # Включить локализацию
+USE_TZ = True    # Включить поддержку часовых поясов
 
-USE_TZ = True
+# Доступные языки
+LANGUAGES = [
+    ('ru', _('Русский')),
+    ('en', _('Английский')),
+]
+
+# Путь к локализационным файлам
+LOCALE_PATHS = [
+    BASE_DIR / 'locale',
+]
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/

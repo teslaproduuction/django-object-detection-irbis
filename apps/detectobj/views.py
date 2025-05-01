@@ -7,16 +7,113 @@ from ast import literal_eval
 from ultralytics import YOLO
 
 from django.views.generic.detail import DetailView
+from django.views.generic import FormView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.conf import settings
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404, redirect
 from django.core.paginator import Paginator
+from django.urls import reverse
+from django.utils.translation import gettext_lazy as _
+from django.http import JsonResponse
 
 from images.models import ImageFile
-from .models import InferencedImage
-from .forms import InferencedImageForm, YoloModelForm
+from .models import InferencedImage, ManualAnnotation
+from .forms import InferencedImageForm, YoloModelForm, ManualAnnotationFormSetFactory
 from modelmanager.models import MLModel
+
+
+class SaveAnnotationView(LoginRequiredMixin, FormView):
+    """API для сохранения аннотаций через AJAX запросы."""
+
+    def post(self, request, *args, **kwargs):
+        if not request.is_ajax():
+            return JsonResponse({'status': 'error', 'message': 'Only AJAX requests are allowed'}, status=400)
+
+        image_id = request.POST.get('image_id')
+        class_name = request.POST.get('class_name')
+        x_center = float(request.POST.get('x_center', 0))
+        y_center = float(request.POST.get('y_center', 0))
+        width = float(request.POST.get('width', 0))
+        height = float(request.POST.get('height', 0))
+
+        if not image_id or not class_name:
+            return JsonResponse({'status': 'error', 'message': 'Missing required data'}, status=400)
+
+        try:
+            image = ImageFile.objects.get(id=image_id)
+            annotation = ManualAnnotation.objects.create(
+                image=image,
+                class_name=class_name,
+                x_center=x_center,
+                y_center=y_center,
+                width=width,
+                height=height,
+                created_by=request.user,
+                is_manual=True
+            )
+            return JsonResponse({
+                'status': 'success',
+                'message': _('Аннотация успешно сохранена'),
+                'annotation_id': annotation.id
+            })
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+class ManualAnnotationView(LoginRequiredMixin, FormView):
+    """Представление для ручной разметки изображений."""
+
+    template_name = 'detectobj/manual_annotation.html'
+    form_class = ManualAnnotationFormSetFactory
+
+    def get_success_url(self):
+        return reverse('detectobj:detection_image_detail_url', kwargs={'pk': self.image.id})
+
+    def dispatch(self, request, *args, **kwargs):
+        # Получаем изображение из URL
+        self.image = get_object_or_404(ImageFile, id=self.kwargs['pk'])
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['image'] = self.image
+        kwargs['user'] = self.request.user
+        return kwargs
+
+    def get_initial(self):
+        # Загружаем существующие аннотации для редактирования
+        initial = []
+        for annotation in ManualAnnotation.objects.filter(image=self.image):
+            initial.append({
+                'class_name': annotation.class_name,
+                'x_center': annotation.x_center,
+                'y_center': annotation.y_center,
+                'width': annotation.width,
+                'height': annotation.height,
+            })
+        return initial
+
+    def form_valid(self, form):
+        # Сохранение аннотаций
+        form.save()
+        messages.success(self.request, _("Аннотации успешно сохранены"))
+        return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['image'] = self.image
+
+        # Получаем список уникальных классов из всех аннотаций
+        class_names = ManualAnnotation.objects.values_list('class_name', flat=True).distinct()
+        context['class_names'] = list(class_names)
+
+        # Добавляем размеры изображения для правильной работы JavaScript
+        img_width, img_height = self.image.get_imgshape
+        context['img_width'] = img_width
+        context['img_height'] = img_height
+
+        return context
 
 
 class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
@@ -32,11 +129,41 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
         # For pagination GET request
         self.get_pagination(context, images_qs)
 
+        # Получаем последнюю инференс-картинку
         if is_inf_img := InferencedImage.objects.filter(
                 orig_image=img_qs
         ).exists():
-            inf_img_qs = InferencedImage.objects.get(orig_image=img_qs)
+            inf_img_qs = InferencedImage.objects.filter(orig_image=img_qs).first()
             context['inf_img_qs'] = inf_img_qs
+
+            # Добавляем счетчик классов, если есть результаты обнаружения
+            if inf_img_qs.detection_info:
+                classes_list = [item.get('class') for item in inf_img_qs.detection_info]
+                context['results_counter'] = collections.Counter(classes_list)
+
+        # Получаем ручные аннотации
+        manual_annotations = ManualAnnotation.objects.filter(image=img_qs)
+        context['manual_annotations'] = manual_annotations
+
+        # Если есть инференс, добавляем к нему ручные аннотации для отображения
+        if 'inf_img_qs' in context and manual_annotations:
+            inf_img = context['inf_img_qs']
+            detection_info = inf_img.detection_info or []
+
+            # Добавляем ручные аннотации к результатам детекции
+            manual_detection_info = [annotation.to_detection_format() for annotation in manual_annotations]
+
+            # Обновляем информацию о результатах
+            if manual_detection_info:
+                combined_detection_info = detection_info + manual_detection_info
+                context['all_detection_info'] = combined_detection_info
+
+                # Обновляем счетчик классов для всех результатов
+                all_classes = [item.get('class') for item in combined_detection_info]
+                context['all_results_counter'] = collections.Counter(all_classes)
+
+        # Добавляем ссылку на страницу ручной разметки
+        context['manual_annotation_url'] = reverse('detectobj:manual_annotation_url', kwargs={'pk': img_qs.id})
 
         context["img_qs"] = img_qs
         context["form1"] = YoloModelForm()
@@ -146,14 +273,15 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
 
         if not results_list:
             messages.warning(
-                request, f'Model unable to predict. Try with another model.')
+                request,
+                _('Модель не смогла обнаружить объекты. Попробуйте другую модель или выполните ручную разметку.'))
         else:
             # Create directory for inference images if it doesn't exist
             media_folder = settings.MEDIA_ROOT
             inferenced_img_dir = os.path.join(
                 media_folder, "inferenced_image")
             if not os.path.exists(inferenced_img_dir):
-                os.makedirs(inferenced_img_dir)
+                os.makedirs(inferenced_img_dir, exist_ok=True)
 
             # Make sure class names are updated in results before plotting
             if is_custom_model:
@@ -233,6 +361,13 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
         context["results_counter"] = results_counter
         context["form1"] = YoloModelForm()
         context["form2"] = InferencedImageForm()
+
+        # Получаем ручные аннотации для текущего изображения
+        manual_annotations = ManualAnnotation.objects.filter(image=img_qs)
+        context["manual_annotations"] = manual_annotations
+
+        # Добавляем ссылку на страницу ручной разметки
+        context['manual_annotation_url'] = reverse('detectobj:manual_annotation_url', kwargs={'pk': img_qs.id})
 
         # Add the latest inferenced image to the context
         if results_list:

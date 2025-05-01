@@ -1,0 +1,505 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+    {% trans "Ручная разметка изображения" %}
+{% endblock title %}
+
+{% block on_page_css %}
+<style>
+    #annotation-canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 10;
+        cursor: crosshair;
+    }
+    
+    .annotation-container {
+        position: relative;
+        margin: 0 auto;
+        display: inline-block;
+    }
+    
+    .bbox {
+        position: absolute;
+        border: 2px solid rgba(255, 0, 0, 0.8);
+        background-color: rgba(255, 0, 0, 0.2);
+        cursor: move;
+    }
+    
+    .bbox-controls {
+        position: absolute;
+        top: -25px;
+        left: 0;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 2px 5px;
+        font-size: 12px;
+        border-radius: 3px;
+    }
+    
+    .bbox-delete {
+        color: red;
+        cursor: pointer;
+        margin-left: 5px;
+    }
+    
+    .resize-handle {
+        width: 8px;
+        height: 8px;
+        background-color: white;
+        border: 1px solid black;
+        position: absolute;
+    }
+    
+    .resize-handle.nw { top: -4px; left: -4px; cursor: nw-resize; }
+    .resize-handle.ne { top: -4px; right: -4px; cursor: ne-resize; }
+    .resize-handle.sw { bottom: -4px; left: -4px; cursor: sw-resize; }
+    .resize-handle.se { bottom: -4px; right: -4px; cursor: se-resize; }
+</style>
+{% endblock on_page_css %}
+
+{% block leftbar %}
+<div class="col-sm-3">
+    {% include 'detectobj/partials/_leftbar.html' %}
+</div>
+{% endblock leftbar %}
+
+{% block content %}
+<div class="col-sm-9 my-2">
+    <div class="card">
+        <div class="card-header">
+            <h4>{% trans "Ручная разметка изображения" %}</h4>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-12">
+                    <p>{% trans "Инструкция:" %}</p>
+                    <ol>
+                        <li>{% trans "Нарисуйте прямоугольник вокруг объекта, который хотите отметить" %}</li>
+                        <li>{% trans "Введите класс объекта (например, 'снежный барс' или 'животное')" %}</li>
+                        <li>{% trans "Добавьте столько аннотаций, сколько необходимо" %}</li>
+                        <li>{% trans "Нажмите 'Сохранить аннотации', когда закончите" %}</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="annotation-container" id="annotation-container">
+                        <img src="{{ image.get_imageurl }}" class="img-fluid" id="target-image">
+                        <canvas id="annotation-canvas"></canvas>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            {% trans "Аннотации" %}
+                        </div>
+                        <div class="card-body">
+                            <div id="annotations-list" class="mb-3">
+                                <!-- Сюда будут добавляться аннотации -->
+                                {% if not form.initial %}
+                                <p>{% trans "Пока нет аннотаций. Нарисуйте прямоугольник на изображении, чтобы добавить." %}</p>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="class-input">{% trans "Класс объекта:" %}</label>
+                                <input type="text" id="class-input" class="form-control" list="class-list" placeholder="{% trans 'Например: снежный барс' %}">
+                                <datalist id="class-list">
+                                    {% for class_name in class_names %}
+                                    <option value="{{ class_name }}">
+                                    {% endfor %}
+                                    <option value="снежный барс">
+                                    <option value="ирбис">
+                                    <option value="животное">
+                                    <option value="человек">
+                                </datalist>
+                            </div>
+                            
+                            <button id="add-annotation-btn" class="btn btn-primary mt-2" disabled>
+                                {% trans "Добавить аннотацию" %}
+                            </button>
+                            
+                            <hr>
+                            
+                            <form method="post" id="annotation-form">
+                                {% csrf_token %}
+                                <div id="form-container">
+                                    {{ formset.management_form }}
+                                    {% for form in formset.forms %}
+                                    <div class="annotation-form-item d-none">
+                                        {{ form.id }}
+                                        {{ form.class_name }}
+                                        {{ form.x_center }}
+                                        {{ form.y_center }}
+                                        {{ form.width }}
+                                        {{ form.height }}
+                                        {% if form.DELETE %}{{ form.DELETE }}{% endif %}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                <button type="submit" class="btn btn-success">
+                                    {% trans "Сохранить аннотации" %}
+                                </button>
+                                <a href="{% url 'detectobj:detection_image_detail_url' image.id %}" class="btn btn-secondary">
+                                    {% trans "Отмена" %}
+                                </a>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block on_page_js %}
+<script>
+    // Константы и переменные
+    const container = document.getElementById('annotation-container');
+    const image = document.getElementById('target-image');
+    const canvas = document.getElementById('annotation-canvas');
+    const ctx = canvas.getContext('2d');
+    const classInput = document.getElementById('class-input');
+    const addAnnotationBtn = document.getElementById('add-annotation-btn');
+    const annotationsList = document.getElementById('annotations-list');
+    const formContainer = document.getElementById('form-container');
+    
+    // Параметры изображения
+    const imgWidth = {{ img_width }};
+    const imgHeight = {{ img_height }};
+    
+    // Переменные для рисования
+    let isDrawing = false;
+    let startX = 0;
+    let startY = 0;
+    let currentX = 0;
+    let currentY = 0;
+    
+    // Массив аннотаций
+    let annotations = [];
+    
+    // Инициализация
+    function init() {
+        // Устанавливаем размеры canvas равными размеру изображения
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+        
+        // Загружаем существующие аннотации
+        loadInitialAnnotations();
+        
+        // Добавляем обработчики событий
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', endDrawing);
+        addAnnotationBtn.addEventListener('click', addAnnotation);
+        classInput.addEventListener('keyup', validateClass);
+    }
+    
+    // Загрузка начальных аннотаций из формсета
+    function loadInitialAnnotations() {
+        {% for form in formset.forms %}
+            {% if form.initial %}
+                // Создаем и добавляем аннотацию из начальных данных
+                const annotation = {
+                    classname: '{{ form.initial.class_name }}',
+                    x: {{ form.initial.x_center }},
+                    y: {{ form.initial.y_center }},
+                    w: {{ form.initial.width }},
+                    h: {{ form.initial.height }},
+                    index: annotations.length  // Индекс в массиве
+                };
+                
+                annotations.push(annotation);
+                createAnnotationElement(annotation);
+            {% endif %}
+        {% endfor %}
+        
+        redrawAnnotations();
+    }
+    
+    // Начало рисования
+    function startDrawing(e) {
+        const rect = canvas.getBoundingClientRect();
+        startX = (e.clientX - rect.left) / canvas.width;
+        startY = (e.clientY - rect.top) / canvas.height;
+        isDrawing = true;
+    }
+    
+    // Рисование 
+    function draw(e) {
+        if (!isDrawing) return;
+        
+        const rect = canvas.getBoundingClientRect();
+        currentX = (e.clientX - rect.left) / canvas.width;
+        currentY = (e.clientY - rect.top) / canvas.height;
+        
+        // Очищаем холст
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Рисуем существующие аннотации
+        redrawAnnotations();
+        
+        // Рисуем текущий прямоугольник
+        ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+        
+        // Расчет координат прямоугольника
+        const width = currentX - startX;
+        const height = currentY - startY;
+        
+        ctx.strokeRect(
+            startX * canvas.width,
+            startY * canvas.height,
+            width * canvas.width,
+            height * canvas.height
+        );
+        
+        ctx.fillRect(
+            startX * canvas.width,
+            startY * canvas.height,
+            width * canvas.width,
+            height * canvas.height
+        );
+    }
+    
+    // Окончание рисования
+    function endDrawing(e) {
+        if (!isDrawing) return;
+        isDrawing = false;
+        
+        // Нормализация координат (от 0 до 1)
+        let x = Math.min(startX, currentX);
+        let y = Math.min(startY, currentY);
+        let w = Math.abs(currentX - startX);
+        let h = Math.abs(currentY - startY);
+        
+        // Проверка минимального размера
+        if (w * canvas.width < 10 || h * canvas.height < 10) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            redrawAnnotations();
+            return;
+        }
+        
+        // Конвертация в формат YOLO (x центра, y центра, ширина, высота)
+        const centerX = x + w / 2;
+        const centerY = y + h / 2;
+        
+        // Временная аннотация для предпросмотра
+        const tempAnnotation = {
+            classname: '',  // Будет заполнено пользователем
+            x: centerX,
+            y: centerY,
+            w: w,
+            h: h,
+            temp: true
+        };
+        
+        // Активируем кнопку добавления и фокусируемся на поле ввода класса
+        addAnnotationBtn.disabled = false;
+        classInput.focus();
+        
+        // Сохраняем временную аннотацию
+        annotations.push(tempAnnotation);
+        tempAnnotation.index = annotations.length - 1;
+        
+        // Перерисовываем холст
+        redrawAnnotations();
+    }
+    
+    // Валидация класса
+    function validateClass() {
+        // Проверяем, что поле не пустое
+        addAnnotationBtn.disabled = !classInput.value.trim();
+    }
+    
+    // Добавление аннотации
+    function addAnnotation() {
+        // Находим временную аннотацию
+        const tempIndex = annotations.findIndex(a => a.temp);
+        if (tempIndex === -1) return;
+        
+        // Обновляем аннотацию
+        annotations[tempIndex].classname = classInput.value.trim();
+        delete annotations[tempIndex].temp;
+        
+        // Создаем элемент управления аннотацией
+        createAnnotationElement(annotations[tempIndex]);
+        
+        // Обновляем форму
+        updateFormData();
+        
+        // Очищаем поле ввода и блокируем кнопку
+        classInput.value = '';
+        addAnnotationBtn.disabled = true;
+        
+        // Перерисовываем холст
+        redrawAnnotations();
+    }
+    
+    // Создание элемента управления аннотацией
+    function createAnnotationElement(annotation) {
+        // Создаем элемент информации об аннотации
+        const annotationItem = document.createElement('div');
+        annotationItem.classList.add('annotation-item', 'mb-2', 'p-2', 'border', 'rounded');
+        annotationItem.dataset.index = annotation.index;
+        
+        // Преобразуем координаты для отображения
+        const pixelX = Math.round(annotation.x * imgWidth);
+        const pixelY = Math.round(annotation.y * imgHeight);
+        const pixelW = Math.round(annotation.w * imgWidth);
+        const pixelH = Math.round(annotation.h * imgHeight);
+        
+        annotationItem.innerHTML = `
+            <div class="annotation-info">
+                <strong>${annotation.classname}</strong>
+                <div class="coordinates small text-muted">
+                    X: ${pixelX}, Y: ${pixelY}, W: ${pixelW}, H: ${pixelH}
+                </div>
+            </div>
+            <div class="annotation-actions mt-1">
+                <button class="btn btn-sm btn-danger delete-annotation" data-index="${annotation.index}">
+                    {% trans "Удалить" %}
+                </button>
+            </div>
+        `;
+        
+        // Добавляем обработчик для удаления
+        annotationItem.querySelector('.delete-annotation').addEventListener('click', function() {
+            deleteAnnotation(parseInt(this.dataset.index));
+        });
+        
+        // Добавляем в список
+        annotationsList.appendChild(annotationItem);
+        
+        // Удаляем сообщение о пустом списке, если оно есть
+        const emptyMessage = annotationsList.querySelector('p');
+        if (emptyMessage) {
+            annotationsList.removeChild(emptyMessage);
+        }
+    }
+    
+    // Удаление аннотации
+    function deleteAnnotation(index) {
+        // Находим аннотацию по индексу
+        const annotationIndex = annotations.findIndex(a => a.index === index);
+        if (annotationIndex === -1) return;
+        
+        // Удаляем из массива
+        annotations.splice(annotationIndex, 1);
+        
+        // Удаляем элемент из списка
+        const annotationItems = document.querySelectorAll('.annotation-item');
+        for (let item of annotationItems) {
+            if (parseInt(item.dataset.index) === index) {
+                annotationsList.removeChild(item);
+                break;
+            }
+        }
+        
+        // Если список пуст, показываем сообщение
+        if (annotations.length === 0) {
+            const emptyMessage = document.createElement('p');
+            emptyMessage.textContent = "{% trans 'Пока нет аннотаций. Нарисуйте прямоугольник на изображении, чтобы добавить.' %}";
+            annotationsList.appendChild(emptyMessage);
+        }
+        
+        // Обновляем форму
+        updateFormData();
+        
+        // Перерисовываем холст
+        redrawAnnotations();
+    }
+    
+    // Перерисовка всех аннотаций
+    function redrawAnnotations() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        for (const annotation of annotations) {
+            // Если это временная аннотация, используем другой цвет
+            if (annotation.temp) {
+                ctx.strokeStyle = 'rgba(0, 0, 255, 0.8)';
+                ctx.fillStyle = 'rgba(0, 0, 255, 0.2)';
+            } else {
+                ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+            }
+            
+            ctx.lineWidth = 2;
+            
+            // Преобразуем координаты центра и размеры обратно в координаты левого верхнего угла
+            const x = (annotation.x - annotation.w / 2) * canvas.width;
+            const y = (annotation.y - annotation.h / 2) * canvas.height;
+            const w = annotation.w * canvas.width;
+            const h = annotation.h * canvas.height;
+            
+            // Рисуем прямоугольник
+            ctx.strokeRect(x, y, w, h);
+            ctx.fillRect(x, y, w, h);
+            
+            // Если это не временная аннотация, добавляем метку класса
+            if (!annotation.temp) {
+                // Отображаем метку класса
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(x, y - 20, annotation.classname.length * 8 + 10, 20);
+                ctx.fillStyle = 'white';
+                ctx.font = '12px Arial';
+                ctx.fillText(annotation.classname, x + 5, y - 5);
+            }
+        }
+    }
+    
+    // Обновление данных формы
+    function updateFormData() {
+        // Очищаем существующие формы
+        const forms = formContainer.querySelectorAll('.annotation-form-item');
+        forms.forEach(form => form.remove());
+        
+        // Создаем новые формы для каждой аннотации
+        for (let i = 0; i < annotations.length; i++) {
+            const annotation = annotations[i];
+            
+            // Пропускаем временные аннотации
+            if (annotation.temp) continue;
+            
+            // Создаем контейнер для формы
+            const formItem = document.createElement('div');
+            formItem.classList.add('annotation-form-item', 'd-none');
+            
+            // Создаем скрытые поля для данных аннотации
+            formItem.innerHTML = `
+                <input type="text" name="form-${i}-class_name" value="${annotation.classname}">
+                <input type="hidden" name="form-${i}-x_center" value="${annotation.x}">
+                <input type="hidden" name="form-${i}-y_center" value="${annotation.y}">
+                <input type="hidden" name="form-${i}-width" value="${annotation.w}">
+                <input type="hidden" name="form-${i}-height" value="${annotation.h}">
+            `;
+            
+            // Добавляем форму в контейнер
+            formContainer.appendChild(formItem);
+        }
+        
+        // Обновляем management форму
+        const totalForms = document.querySelector('[name="form-TOTAL_FORMS"]');
+        const validForms = annotations.filter(a => !a.temp).length;
+        totalForms.value = validForms.toString();
+    }
+    
+    // Инициализация после загрузки страницы
+    window.addEventListener('load', init);
+    
+    // Обработка изменения размера окна
+    window.addEventListener('resize', function() {
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+        redrawAnnotations();
+    });
+</script>
+{% endblock on_page_js %}

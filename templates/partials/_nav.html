@@ -1,41 +1,59 @@
+{% load i18n %}
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top fixed-top mb-4">
   <div class="container-fluid">
-    <a class="navbar-brand" href="{% url 'home_url' %}">Django-obj-detection</a>
+    <a class="navbar-brand" href="{% url 'home_url' %}">{% trans "Обнаружение объектов" %}</a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
       <ul class="navbar-nav me-auto mb-2 mb-lg-0">
         <li class="nav-item">
-          <a class="nav-link" href="#">Link</a>
+          <a class="nav-link" href="{% url 'images:imageset_list_url' %}">{% trans "Наборы изображений" %}</a>
         </li>
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            Dropdown
+            {% trans "Модели" %}
           </a>
           <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="#">Action</a></li>
-            <li><a class="dropdown-item" href="#">Another action</a></li>
+            <li><a class="dropdown-item" href="{% url 'modelmanager:mlmodel_upload_url' %}">{% trans "Загрузить модель" %}</a></li>
+            <li><a class="dropdown-item" href="{% url 'modelmanager:public_mlmodel_list_url' %}">{% trans "Список моделей" %}</a></li>
             <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="#">Something else here</a></li>
+            <li><a class="dropdown-item" href="{% url 'modelmanager:user_mlmodel_list_url' %}">{% trans "Мои модели" %}</a></li>
           </ul>
         </li>
       </ul>
       <div class="d-flex">
+        <!-- Переключатель языков -->
+        <div class="language-chooser mx-3">
+          <form action="{% url 'set_language' %}" method="post" class="d-inline">
+            {% csrf_token %}
+            <input name="next" type="hidden" value="{{ request.path }}" />
+            <select name="language" onchange="this.form.submit()" class="form-select form-select-sm bg-dark text-white">
+              {% get_current_language as CURRENT_LANGUAGE %}
+              {% get_available_languages as LANGUAGES %}
+              {% for lang_code, lang_name in LANGUAGES %}
+                <option value="{{ lang_code }}" {% if lang_code == CURRENT_LANGUAGE %}selected{% endif %}>
+                  {{ lang_name }}
+                </option>
+              {% endfor %}
+            </select>
+          </form>
+        </div>
+
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
         {% if user.is_authenticated %}
           <li class="nav-item">
             <a class="nav-link active" href="#">{{ request.user|capfirst }}</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link active" href="{% url 'users:logout' %}">logout</a>
+            <a class="nav-link active" href="{% url 'users:logout' %}">{% trans "Выход" %}</a>
           </li>
         {% else %}
           <li class="nav-item active">
-            <a class="nav-link" href="{% url 'users:login' %}">Login</a>
+            <a class="nav-link" href="{% url 'users:login' %}">{% trans "Вход" %}</a>
           </li>
           <li class="nav-item active">
-            <a class="nav-link" href="{% url 'users:register' %}">Register</a>
+            <a class="nav-link" href="{% url 'users:register' %}">{% trans "Регистрация" %}</a>
           </li>
         {% endif %}
         </ul>
