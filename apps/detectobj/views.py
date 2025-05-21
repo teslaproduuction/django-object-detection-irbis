@@ -1,10 +1,12 @@
 import os
 import io
+import numpy as np
 from PIL import Image as I
 import torch
 import collections
 from ast import literal_eval
 from ultralytics import YOLO
+from ultralytics.utils.plotting import Annotator
 
 from django.views.generic.detail import DetailView
 from django.views.generic import FormView
@@ -15,7 +17,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.core.paginator import Paginator
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseRedirect
 
 from images.models import ImageFile
 from .models import InferencedImage, ManualAnnotation
@@ -95,10 +97,111 @@ class ManualAnnotationView(LoginRequiredMixin, FormView):
         return initial
 
     def form_valid(self, form):
-        # Сохранение аннотаций
+        # Save the manual annotations
         form.save()
         messages.success(self.request, _("Аннотации успешно сохранены"))
-        return super().form_valid(form)
+
+        # Now update any existing InferencedImage records for this image
+        all_annotations = ManualAnnotation.objects.filter(image=self.image)
+
+        if all_annotations.exists():
+            # Convert all manual annotations to detection format
+            manual_detection_info = [annotation.to_detection_format() for annotation in all_annotations]
+
+            # Update only inference records with custom models
+            existing_inferences = InferencedImage.objects.filter(orig_image=self.image, custom_model__isnull=False)
+            for inf_img in existing_inferences:
+                # Only update records with custom models
+                if inf_img.custom_model:
+                    detection_info = inf_img.detection_info or []
+
+                    # Filter out any existing manual annotations (to avoid duplicates)
+                    model_detections = []
+                    for item in detection_info:
+                        # Check if this is a model detection (not a manual annotation)
+                        is_manual = False
+                        for annot in manual_detection_info:
+                            # Compare coordinates with a small tolerance
+                            if (abs(item.get('x', 0) - annot.get('x', 0)) < 0.01 and
+                                    abs(item.get('y', 0) - annot.get('y', 0)) < 0.01 and
+                                    abs(item.get('width', 0) - annot.get('width', 0)) < 0.01 and
+                                    abs(item.get('height', 0) - annot.get('height', 0)) < 0.01):
+                                is_manual = True
+                                break
+
+                        if not is_manual:
+                            model_detections.append(item)
+
+                    # Combine model detections with manual annotations
+                    combined_info = model_detections + manual_detection_info
+
+                    # Update the InferencedImage record's detection_info
+                    inf_img.detection_info = combined_info
+
+                    # Now we need to regenerate the image with annotations
+                    try:
+                        # Get inference image path
+                        inf_img_path = inf_img.inf_image_path
+                        if inf_img_path.startswith(settings.MEDIA_URL):
+                            inf_img_path = inf_img_path[len(settings.MEDIA_URL):]
+                        inf_img_full_path = os.path.join(settings.MEDIA_ROOT, inf_img_path)
+
+                        # Open the original image
+                        img_path = self.image.get_imagepath
+                        img = I.open(img_path)
+
+                        # Create an annotated image with YOLO
+                        model = YOLO(inf_img.custom_model.pth_filepath)
+
+                        # Run inference
+                        results = model(img,
+                                        conf=float(inf_img.model_conf) if inf_img.model_conf else settings.MODEL_CONFIDENCE,
+                                        verbose=False)
+
+                        # Get the first result
+                        result = results[0]
+
+                        # Plot using the result's plot method
+                        plotted_img = result.plot()
+
+                        # Create an annotator to add manual annotations
+                        annotator = Annotator(plotted_img)
+
+                        # Draw manual annotations in a different color
+                        for annotation in manual_detection_info:
+                            # Get normalized coordinates
+                            x_center = annotation.get('x', 0)
+                            y_center = annotation.get('y', 0)
+                            width = annotation.get('width', 0)
+                            height = annotation.get('height', 0)
+
+                            # Convert to pixel coordinates
+                            img_width, img_height = img.size
+                            x1 = int((x_center - width / 2) * img_width)
+                            y1 = int((y_center - height / 2) * img_height)
+                            x2 = int((x_center + width / 2) * img_width)
+                            y2 = int((y_center + height / 2) * img_height)
+
+                            # Set color (manual annotations in red)
+                            color = (255, 0, 0)  # RGB for red
+
+                            # Draw the box
+                            annotator.box_label([x1, y1, x2, y2], annotation.get('class', 'unknown'), color=color)
+
+                        # Save the final image
+                        I.fromarray(annotator.result()).save(inf_img_full_path, format="JPEG")
+
+                    except Exception as e:
+                        print(f"Error regenerating inference image: {e}")
+
+                    # Save the InferencedImage record
+                    inf_img.save()
+
+            if existing_inferences.exists():
+                messages.info(self.request, _("Аннотации также добавлены к существующим результатам распознавания с кастомными моделями"))
+
+        # Make sure to always redirect to the success URL
+        return HttpResponseRedirect(self.get_success_url())
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -184,6 +287,9 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
         img_qs = self.get_object()
         img_bytes = img_qs.image.read()
         img = I.open(io.BytesIO(img_bytes))
+
+        # Initialize inf_img_qs to None to avoid UnboundLocalError later
+        inf_img_qs = None
 
         # Get form data
         modelconf = self.request.POST.get("model_conf")
@@ -271,18 +377,25 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
         classes_list = [item["class"] for item in results_list]
         results_counter = collections.Counter(classes_list)
 
-        if not results_list:
+        # Get manual annotations
+        manual_annotations = ManualAnnotation.objects.filter(image=img_qs)
+
+        # Create directory for inference images if it doesn't exist
+        media_folder = settings.MEDIA_ROOT
+        inferenced_img_dir = os.path.join(
+            media_folder, "inferenced_image")
+        if not os.path.exists(inferenced_img_dir):
+            os.makedirs(inferenced_img_dir, exist_ok=True)
+
+        # Set default values for variables used later
+        img_filename = None
+        inf_img = None
+
+        if not results_list and not (manual_annotations.exists() and is_custom_model):
             messages.warning(
                 request,
                 _('Модель не смогла обнаружить объекты. Попробуйте другую модель или выполните ручную разметку.'))
         else:
-            # Create directory for inference images if it doesn't exist
-            media_folder = settings.MEDIA_ROOT
-            inferenced_img_dir = os.path.join(
-                media_folder, "inferenced_image")
-            if not os.path.exists(inferenced_img_dir):
-                os.makedirs(inferenced_img_dir, exist_ok=True)
-
             # Make sure class names are updated in results before plotting
             if is_custom_model:
                 # Update class names in each result
@@ -312,16 +425,12 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
 
             # Generate filename with model identifier to allow multiple detections of same image
             img_filename = f"{os.path.splitext(img_qs.name)[0]}_{img_file_suffix}{os.path.splitext(img_qs.name)[1]}"
-            img_path = f"{inferenced_img_dir}/{img_filename}"
+            img_path = os.path.join(inferenced_img_dir, img_filename)
 
             # If custom model, print class names right before plotting
             if is_custom_model:
                 print("Class names right before plotting:", model.names)
                 print("First result names:", getattr(results[0], 'names', 'No names attribute'))
-
-            # Save annotated image
-            plotted_img = results[0].plot()
-            I.fromarray(plotted_img).save(img_path, format="JPEG")
 
             # Create a new inference image record each time (don't use get_or_create)
             inf_img = InferencedImage(
@@ -334,10 +443,171 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
                 inf_img.custom_model = detection_model
             elif yolo_model_name:
                 inf_img.yolo_model = yolo_model_name
+
+            # Process manual annotations only if using a custom model
+            if manual_annotations.exists() and is_custom_model:
+                # Convert manual annotations to detection format
+                manual_detection_info = [annotation.to_detection_format() for annotation in manual_annotations]
+
+                # Add them to the detection results
+                if not results_list:
+                    # If no objects were detected by the model, use only manual annotations
+                    inf_img.detection_info = manual_detection_info
+                else:
+                    # Otherwise, combine model detections with manual annotations
+                    inf_img.detection_info = results_list + manual_detection_info
+
+                # Handle image creation with annotations
+                if results_list:
+                    # Get the result from inference
+                    result = results[0]
+
+                    # Plot using the result's plot method
+                    plotted_img = result.plot()
+
+                    # Create an annotator to add manual annotations
+                    annotator = Annotator(plotted_img)
+
+                    # Draw manual annotations in a different color
+                    for annotation in manual_detection_info:
+                        # Get normalized coordinates
+                        x_center = annotation.get('x', 0)
+                        y_center = annotation.get('y', 0)
+                        width = annotation.get('width', 0)
+                        height = annotation.get('height', 0)
+
+                        # Convert to pixel coordinates
+                        img_width, img_height = img.size
+                        x1 = int((x_center - width / 2) * img_width)
+                        y1 = int((y_center - height / 2) * img_height)
+                        x2 = int((x_center + width / 2) * img_width)
+                        y2 = int((y_center + height / 2) * img_height)
+
+                        # Set color (manual annotations in red)
+                        color = (255, 0, 0)  # RGB for red
+
+                        # Draw the box
+                        annotator.box_label([x1, y1, x2, y2], annotation.get('class', 'unknown'), color=color)
+
+                    # Save the final image with manual annotations
+                    I.fromarray(annotator.result()).save(img_path, format="JPEG")
+                else:
+                    # No model results, just manual annotations
+                    # Create a plain image with just manual annotations
+                    annotator = Annotator(np.array(img))
+
+                    # Draw manual annotations
+                    for annotation in manual_detection_info:
+                        # Get normalized coordinates
+                        x_center = annotation.get('x', 0)
+                        y_center = annotation.get('y', 0)
+                        width = annotation.get('width', 0)
+                        height = annotation.get('height', 0)
+
+                        # Convert to pixel coordinates
+                        img_width, img_height = img.size
+                        x1 = int((x_center - width / 2) * img_width)
+                        y1 = int((y_center - height / 2) * img_height)
+                        x2 = int((x_center + width / 2) * img_width)
+                        y2 = int((y_center + height / 2) * img_height)
+
+                        # Set color (manual annotations in red)
+                        color = (255, 0, 0)  # RGB for red
+
+                        # Draw the box
+                        annotator.box_label([x1, y1, x2, y2], annotation.get('class', 'unknown'), color=color)
+
+                    # Save the image with manual annotations
+                    I.fromarray(annotator.result()).save(img_path, format="JPEG")
+            elif results_list:
+                # No manual annotations or not using custom model, just save the regular plotted image
+                plotted_img = results[0].plot()
+                I.fromarray(plotted_img).save(img_path, format="JPEG")
+
+            # Save inference image with combined annotations
             inf_img.save()
 
+            # Find duplicate images by hash (more reliable than filename)
+            if img_qs.image_hash and is_custom_model:  # Only apply for custom models
+                duplicate_images = ImageFile.objects.filter(image_hash=img_qs.image_hash).exclude(id=img_qs.id)
+                if duplicate_images.exists():
+                    # Only apply for custom models
+                    for dup_img in duplicate_images:
+                        dup_annotations = ManualAnnotation.objects.filter(image=dup_img)
+                        if dup_annotations.exists():
+                            # Convert annotations to detection format
+                            dup_detection_info = [annotation.to_detection_format() for annotation in dup_annotations]
+
+                            # If we already have detection info, add the duplicate annotations
+                            if inf_img.detection_info:
+                                # Check to avoid adding duplicate annotations
+                                existing_boxes = set()
+                                for box in inf_img.detection_info:
+                                    key = (box.get('x'), box.get('y'), box.get('width'), box.get('height'),
+                                           box.get('class'))
+                                    existing_boxes.add(key)
+
+                                # Only add unique annotations
+                                for box in dup_detection_info:
+                                    key = (box.get('x'), box.get('y'), box.get('width'), box.get('height'),
+                                           box.get('class'))
+                                    if key not in existing_boxes:
+                                        inf_img.detection_info.append(box)
+                            else:
+                                # If no detection info yet, use the duplicate annotations
+                                inf_img.detection_info = dup_detection_info
+
+                            # Save the updated detection info
+                            inf_img.save()
+
+                            # Add a message to inform the user
+                            messages.info(
+                                request,
+                                _('Найдены и применены ручные аннотации с идентичных изображений.'))
+
+                            # Only need to apply from one duplicate
+                            break
+            elif is_custom_model:  # Only apply for custom models
+                # Fallback to name-based detection if hash is not available
+                duplicate_images = ImageFile.objects.filter(name=img_qs.name).exclude(id=img_qs.id)
+                if duplicate_images.exists():
+                    # Only apply for custom models - if using YOLOv8 standard models, we skip this
+                    for dup_img in duplicate_images:
+                        dup_annotations = ManualAnnotation.objects.filter(image=dup_img)
+                        if dup_annotations.exists():
+                            # Convert annotations to detection format
+                            dup_detection_info = [annotation.to_detection_format() for annotation in dup_annotations]
+
+                            # If we already have detection info, add the duplicate annotations
+                            if inf_img.detection_info:
+                                # Check to avoid adding duplicate annotations
+                                existing_boxes = set()
+                                for box in inf_img.detection_info:
+                                    key = (box.get('x'), box.get('y'), box.get('width'), box.get('height'),
+                                           box.get('class'))
+                                    existing_boxes.add(key)
+
+                                # Only add unique annotations
+                                for box in dup_detection_info:
+                                    key = (box.get('x'), box.get('y'), box.get('width'), box.get('height'),
+                                           box.get('class'))
+                                    if key not in existing_boxes:
+                                        inf_img.detection_info.append(box)
+                            else:
+                                # If no detection info yet, use the duplicate annotations
+                                inf_img.detection_info = dup_detection_info
+
+                            # Save the updated detection info
+                            inf_img.save()
+
+                            # Add a message to inform the user
+                            messages.info(
+                                request,
+                                _('Найдены и применены ручные аннотации с похожих изображений.'))
+
             # Get the latest inference for display
-            inf_img_qs = inf_img
+            if inf_img:
+                inf_img_qs = inf_img
 
         # Clear CUDA cache if using GPU
         if torch.cuda.is_available():
@@ -356,21 +626,20 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
         self.get_pagination(context, images_qs)
 
         context["img_qs"] = img_qs
-        context["inferenced_img_dir"] = f"{settings.MEDIA_URL}inferenced_image/{img_filename}" if results_list else None
+        context["inferenced_img_dir"] = f"{settings.MEDIA_URL}inferenced_image/{img_filename}" if img_filename else None
         context["results_list"] = results_list
         context["results_counter"] = results_counter
         context["form1"] = YoloModelForm()
         context["form2"] = InferencedImageForm()
 
-        # Получаем ручные аннотации для текущего изображения
-        manual_annotations = ManualAnnotation.objects.filter(image=img_qs)
+        # Add manual annotations to context
         context["manual_annotations"] = manual_annotations
 
-        # Добавляем ссылку на страницу ручной разметки
+        # Add link to manual annotation page
         context['manual_annotation_url'] = reverse('detectobj:manual_annotation_url', kwargs={'pk': img_qs.id})
 
-        # Add the latest inferenced image to the context
-        if results_list:
+        # Add the latest inferenced image to the context if available
+        if inf_img_qs:
             context["inf_img_qs"] = inf_img_qs
 
         return render(self.request, self.template_name, context)

@@ -1,4 +1,5 @@
 import os
+import hashlib
 from PIL import Image as I
 
 from django.db import models
@@ -50,22 +51,25 @@ class ImageFile(models.Model):
 
     is_inferenced = models.BooleanField(default=False)
 
+    # Add a field to store image hash
+    image_hash = models.CharField(max_length=64, blank=True, null=True, db_index=True)
+
     def __str__(self):
         return self.name
 
-    @ property
+    @property
     def get_imageurl(self):
         return self.image.url
 
-    @ property
+    @property
     def get_imagepath(self):
         return self.image.path
 
-    @ property
+    @property
     def get_filename(self):
         return os.path.split(self.image.url)[-1]
 
-    @ property
+    @property
     def get_imgshape(self):
         im = I.open(self.get_imagepath)
         return im.size
@@ -74,9 +78,35 @@ class ImageFile(models.Model):
         return reverse("images:images_list_url", kwargs={"pk": self.image_set.id})
 
     def save(self, *args, **kwargs):
-        # Convert image to 640px before saving.
+        # Generate hash for the image if not already set
+        if not self.image_hash and self.image:
+            try:
+                with open(self.image.path, 'rb') as f:
+                    file_hash = hashlib.sha256()
+                    for chunk in iter(lambda: f.read(4096), b''):
+                        file_hash.update(chunk)
+                    self.image_hash = file_hash.hexdigest()
+            except Exception as e:
+                # If image file doesn't exist yet, we'll generate the hash after it's saved
+                print(f"Unable to generate image hash: {e}")
+
+        # Call the parent class save method
         super().save(*args, **kwargs)
 
+        # If hash wasn't generated before saving and the image file now exists, generate it
+        if not self.image_hash and self.image:
+            try:
+                with open(self.get_imagepath, 'rb') as f:
+                    file_hash = hashlib.sha256()
+                    for chunk in iter(lambda: f.read(4096), b''):
+                        file_hash.update(chunk)
+                    self.image_hash = file_hash.hexdigest()
+                # Save again to store the hash, but avoid recursion
+                ImageFile.objects.filter(pk=self.pk).update(image_hash=self.image_hash)
+            except Exception as e:
+                print(f"Unable to generate image hash after save: {e}")
+
+        # Convert image to 640px before saving.
         img = I.open(self.get_imagepath)
         if img.height > 640 or img.width > 640:
             output_size = (640, 640)

@@ -458,38 +458,73 @@
     
     // Обновление данных формы
     function updateFormData() {
-        // Очищаем существующие формы
-        const forms = formContainer.querySelectorAll('.annotation-form-item');
-        forms.forEach(form => form.remove());
-        
-        // Создаем новые формы для каждой аннотации
-        for (let i = 0; i < annotations.length; i++) {
-            const annotation = annotations[i];
-            
-            // Пропускаем временные аннотации
-            if (annotation.temp) continue;
-            
-            // Создаем контейнер для формы
-            const formItem = document.createElement('div');
-            formItem.classList.add('annotation-form-item', 'd-none');
-            
-            // Создаем скрытые поля для данных аннотации
-            formItem.innerHTML = `
-                <input type="text" name="form-${i}-class_name" value="${annotation.classname}">
-                <input type="hidden" name="form-${i}-x_center" value="${annotation.x}">
-                <input type="hidden" name="form-${i}-y_center" value="${annotation.y}">
-                <input type="hidden" name="form-${i}-width" value="${annotation.w}">
-                <input type="hidden" name="form-${i}-height" value="${annotation.h}">
-            `;
-            
-            // Добавляем форму в контейнер
-            formContainer.appendChild(formItem);
+        try {
+            // Очищаем существующие формы
+            const forms = formContainer.querySelectorAll('.annotation-form-item');
+            forms.forEach(form => form.remove());
+
+            // Создаем новые формы для каждой аннотации
+            let validFormCount = 0;
+            for (let i = 0; i < annotations.length; i++) {
+                const annotation = annotations[i];
+
+                // Пропускаем временные аннотации
+                if (annotation.temp) continue;
+
+                // Создаем контейнер для формы
+                const formItem = document.createElement('div');
+                formItem.classList.add('annotation-form-item', 'd-none');
+
+                // Создаем скрытые поля для данных аннотации
+                formItem.innerHTML = `
+                    <input type="text" name="form-${validFormCount}-class_name" value="${annotation.classname}">
+                    <input type="hidden" name="form-${validFormCount}-x_center" value="${annotation.x}">
+                    <input type="hidden" name="form-${validFormCount}-y_center" value="${annotation.y}">
+                    <input type="hidden" name="form-${validFormCount}-width" value="${annotation.w}">
+                    <input type="hidden" name="form-${validFormCount}-height" value="${annotation.h}">
+                `;
+
+                // Добавляем форму в контейнер
+                formContainer.appendChild(formItem);
+                validFormCount++;
+            }
+
+            // Обновляем management форму
+            const totalForms = document.querySelector('[name="form-TOTAL_FORMS"]');
+            if (totalForms) {
+                totalForms.value = validFormCount.toString();
+            } else {
+                console.error("Error: Could not find form-TOTAL_FORMS field");
+                // Create the management form fields if they don't exist
+                const totalFormsInput = document.createElement('input');
+                totalFormsInput.type = 'hidden';
+                totalFormsInput.name = 'form-TOTAL_FORMS';
+                totalFormsInput.value = validFormCount.toString();
+
+                const initialFormsInput = document.createElement('input');
+                initialFormsInput.type = 'hidden';
+                initialFormsInput.name = 'form-INITIAL_FORMS';
+                initialFormsInput.value = '0';
+
+                const minNumFormsInput = document.createElement('input');
+                minNumFormsInput.type = 'hidden';
+                minNumFormsInput.name = 'form-MIN_NUM_FORMS';
+                minNumFormsInput.value = '0';
+
+                const maxNumFormsInput = document.createElement('input');
+                maxNumFormsInput.type = 'hidden';
+                maxNumFormsInput.name = 'form-MAX_NUM_FORMS';
+                maxNumFormsInput.value = '1000';
+
+                // Add the fields to the form container
+                formContainer.appendChild(totalFormsInput);
+                formContainer.appendChild(initialFormsInput);
+                formContainer.appendChild(minNumFormsInput);
+                formContainer.appendChild(maxNumFormsInput);
+            }
+        } catch (error) {
+            console.error("Error updating form data:", error);
         }
-        
-        // Обновляем management форму
-        const totalForms = document.querySelector('[name="form-TOTAL_FORMS"]');
-        const validForms = annotations.filter(a => !a.temp).length;
-        totalForms.value = validForms.toString();
     }
     
     // Инициализация после загрузки страницы
