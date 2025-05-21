@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+
 app_name = 'modelmanager'
 
 urlpatterns = [
@@ -19,4 +20,13 @@ urlpatterns = [
          views.PublicMLModelListView.as_view(),
          name='public_mlmodel_list_url'
          ),
+    path('model_stats/<int:model_id>/',
+         views.ModelTrainingStatsView.as_view(),
+         name='model_training_stats_url'
+         ),
+    path('model_stats/',
+         views.ModelTrainingStatsView.as_view(),
+         name='model_training_stats_default_url'
+         ),
+
 ]

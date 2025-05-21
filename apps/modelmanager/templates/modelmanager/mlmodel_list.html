@@ -3,27 +3,27 @@
 {% load i18n %}
 
 {% block title %}
-{% trans "User Model" %}
+    {% trans "User Model" %}
 {% endblock title %}
 
 {% block leftbar %}
-<div class="col-md-3">
-    <ul class="list-group list-group-flush">
-        {% if 'public' in request.path %}
-            <li class="list-group-item active">{% trans "Public ML Models" %}</li>
-            <li class="list-group-item">
-                <a href="{% url 'modelmanager:user_mlmodel_list_url' %}">{% trans "My ML Models" %}</a>
-            </li>
-        {% elif 'user' in request.path %}
-            <li class="list-group-item">
-                <a href="{% url 'modelmanager:public_mlmodel_list_url' %}">{% trans "Public ML Models" %}</a>
-            </li>
-            <li class="list-group-item active">{% trans "My ML Models" %}</li>
-        {% endif %}
-    </ul>
-    <br>
+    <div class="col-md-3">
+        <ul class="list-group list-group-flush">
+            {% if 'public' in request.path %}
+                <li class="list-group-item active">{% trans "Public ML Models" %}</li>
+                <li class="list-group-item">
+                    <a href="{% url 'modelmanager:user_mlmodel_list_url' %}">{% trans "My ML Models" %}</a>
+                </li>
+            {% elif 'user' in request.path %}
+                <li class="list-group-item">
+                    <a href="{% url 'modelmanager:public_mlmodel_list_url' %}">{% trans "Public ML Models" %}</a>
+                </li>
+                <li class="list-group-item active">{% trans "My ML Models" %}</li>
+            {% endif %}
+        </ul>
+        <br>
 
-</div>
+    </div>
 {% endblock leftbar %}
 
 {% block content %}
@@ -47,6 +47,47 @@
             {% endfor %}
 
         {% elif public_models %}
+            {% for model in public_models %}
+                <div class="card mb-3">
+                    <div class="card-header">
+                        {{ model.name|capfirst }}
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item">{% trans "Uploaded by" %}: {{ model.uploader|capfirst }}</li>
+                            <li class="list-group-item">{% trans "Class file name" %}: {{ model.class_filename }}</li>
+                            <li class="list-group-item">{% trans "Classes" %}: {{ model.get_classesname }}</li>
+                            <li class="list-group-item">{% trans "Version" %}: {{ model.version }}</li>
+                            <li class="list-group-item">{% trans "Description" %}: {{ model.description }}</li>
+                        </ul>
+                    </div>
+                </div>
+            {% endfor %}
+            <!-- Добавьте это в шаблон apps/modelmanager/templates/modelmanager/mlmodel_list.html -->
+            <!-- В блок для отображения моделей (custom_models или public_models) -->
+
+            {% if user_models %}
+                {% for model in user_models %}
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            {{ model.name|capfirst }}
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item">{% trans "Uploaded by" %}: {{ model.uploader|capfirst }}</li>
+                                <li class="list-group-item">{% trans "Class file name" %}: {{ model.class_filename }}</li>
+                                <li class="list-group-item">{% trans "Classes" %}: {{ model.get_classesname }}</li>
+                                <li class="list-group-item">{% trans "Version" %}: {{ model.version }}</li>
+                                <li class="list-group-item">{% trans "Description" %}: {{ model.description }}</li>
+                            </ul>
+                            <a href="{% url 'modelmanager:model_training_stats_url' model.id %}"
+                               class="btn btn-sm btn-outline-info mt-2">
+                                {% trans "Статистика обучения" %}
+                            </a>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% elif public_models %}
                 {% for model in public_models %}
                     <div class="card mb-3">
                         <div class="card-header">
@@ -60,11 +101,18 @@
                                 <li class="list-group-item">{% trans "Version" %}: {{ model.version }}</li>
                                 <li class="list-group-item">{% trans "Description" %}: {{ model.description }}</li>
                             </ul>
+                            <a href="{% url 'modelmanager:model_training_stats_url' model.id %}"
+                               class="btn btn-sm btn-outline-info mt-2">
+                                {% trans "Статистика обучения" %}
+                            </a>
                         </div>
                     </div>
                 {% endfor %}
+            {% else %}
+                {% trans "No Model uploaded yet." %}
+            {% endif %}
         {% else %}
-        {% trans "No Model uploaded yet." %}
+            {% trans "No Model uploaded yet." %}
         {% endif %}
     </div>
 {% endblock content %}
