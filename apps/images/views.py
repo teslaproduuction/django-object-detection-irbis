@@ -27,21 +27,43 @@ from modelmanager.models import MLModel
 class ImageSetListView(LoginRequiredMixin, ListView):
     model = ImageSet
     template_name = "images/imageset_list.html"
-    context_object_name = "user_imagesets"
+    context_object_name = "imagesets"
+    paginate_by = 12
 
     def get_queryset(self):
-        return super().get_queryset().filter(user=self.request.user).order_by('-created')
+        view_type = self.request.GET.get('view')
+        if view_type == 'public':
+            return ImageSet.objects.filter(public=True).order_by('-created')
+        else:
+            return ImageSet.objects.filter(user=self.request.user).order_by('-created')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['public_imagesets'] = ImageSet.objects.filter(
+        public_imagesets = ImageSet.objects.filter(
             public=True).order_by('-created')
+        user_imagesets = ImageSet.objects.filter(
+            user=self.request.user).order_by('-created')
+        context["public_imagesets"] = public_imagesets
+        context["user_imagesets"] = user_imagesets
+        context["view_type"] = self.request.GET.get('view', 'personal')
         return context
 
 
 class ImageSetDetailView(LoginRequiredMixin, DetailView):
     model = ImageSet
     template_name = "images/imageset_detail.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Статистика обработки
+        context['processed_count'] = self.object.images.filter(is_inferenced=True).count()
+        context['unprocessed_count'] = self.object.images.filter(is_inferenced=False).count()
+        context['with_objects_count'] = self.object.images.filter(
+            detectedimages__isnull=False
+        ).distinct().count()
+
+        return context
 
 
 class ImageSetCreateView(LoginRequiredMixin, CreateView):
@@ -266,18 +288,20 @@ class BatchDetectionView(LoginRequiredMixin, FormView):
     def process_batch_detection(self, yolo_model_name, custom_model, model_conf):
         """Выполняет пакетное распознавание для всех изображений в наборе."""
 
-        # Настройка модели
-        if custom_model:
-            model = YOLO(custom_model.pth_filepath)
-            is_custom_model = True
+        # Определяем тип модели (добавить эту строку)
+        is_custom_model = custom_model is not None
+
+        # Загрузка модели
+        if is_custom_model:
+            model = YOLO(custom_model.model_file.path)
+            img_file_suffix = f"custom_{custom_model.id}"
         else:
-            yolo_weightsdir = settings.YOLOV8_WEIGTHS_DIR
-            model_path = os.path.join(yolo_weightsdir, yolo_model_name)
-            if not os.path.exists(model_path):
-                model = YOLO(yolo_model_name)
-            else:
-                model = YOLO(model_path)
-            is_custom_model = False
+            model = YOLO(yolo_model_name)  # Автоматически загружает модель по имени
+            # Безопасно извлекаем имя модели без расширения
+            model_name = yolo_model_name
+            if '.' in model_name:
+                model_name = model_name.split('.')[0]
+            img_file_suffix = f"yolo_{model_name}"
 
         # Обновляем названия классов для кастомной модели
         if is_custom_model:
@@ -435,3 +459,10 @@ class BatchDetectionResultsView(LoginRequiredMixin, TemplateView):
             })
 
         return context
+
+class ImagesDeleteUrl(LoginRequiredMixin, DeleteView):
+    model = ImageFile
+
+    def get_success_url(self):
+        qs = self.get_object()
+        return qs.get_delete_url()

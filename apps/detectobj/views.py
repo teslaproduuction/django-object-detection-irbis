@@ -478,7 +478,7 @@ class ManualAnnotationView(LoginRequiredMixin, FormView):
         context['class_names'] = list(class_names)
 
         # Добавляем размеры изображения для правильной работы JavaScript
-        img_width, img_height = self.image.get_imgshape
+        img_width, img_height, *_ = self.image.get_imgshape()
         context['img_width'] = img_width
         context['img_height'] = img_height
 

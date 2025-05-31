@@ -6,183 +6,177 @@
 {% endblock title %}
 
 {% block leftbar %}
-<div class="col-sm-3">
-    {% include 'images/partials/_leftbar.html' %}
-</div>
+    <div class="col-sm-3">
+        {% include 'images/partials/_leftbar.html' %}
+    </div>
 {% endblock leftbar %}
 
 {% block content %}
-<div class="col-sm-9">
-    <div class="card">
-        <div class="card-header">
-            <h4>{% trans "Image set" %}: {{ object.name|capfirst }}</h4>
-        </div>
-        <div class="card-body">
-            <ul class="list-group list-group-flush">
-                <li class="list-group-item d-flex justify-content-between">
-                    <span>{% trans "Uploaded by" %}:</span>
-                    <strong>{{ object.user|capfirst }}</strong>
-                </li>
-                <li class="list-group-item d-flex justify-content-between">
-                    <span>{% trans "Total images" %}:</span>
-                    <span class="badge bg-primary">{{ object.images.count }}</span>
-                </li>
-                <li class="list-group-item">
-                    <strong>{% trans "Description" %}:</strong> {{ object.description }}
-                </li>
-                <li class="list-group-item d-flex justify-content-between">
-                    <span>{% trans "Created on" %}:</span>
-                    <span>{{ object.created|date:"d.m.Y H:i" }}</span>
-                </li>
-                <li class="list-group-item d-flex justify-content-between">
-                    <span>{% trans "Updated on" %}:</span>
-                    <span>{{ object.modified|date:"d.m.Y H:i" }}</span>
-                </li>
-            </ul>
+    <div class="col-sm-9">
+        <div class="card">
+            <div class="card-header">
+                <h4>{% trans "Image set" %}: {{ object.name|capfirst }}</h4>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>{% trans "Uploaded by" %}:</span>
+                        <strong>{{ object.user|capfirst }}</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>{% trans "Total images" %}:</span>
+                        <span class="badge bg-primary">{{ object.images.count }}</span>
+                    </li>
+                    <li class="list-group-item">
+                        <strong>{% trans "Description" %}:</strong> {{ object.description }}
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>{% trans "Created on" %}:</span>
+                        <span>{{ object.created|date:"d.m.Y H:i" }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>{% trans "Updated on" %}:</span>
+                        <span>{{ object.modified|date:"d.m.Y H:i" }}</span>
+                    </li>
+                </ul>
 
-            <div class="mt-3">
-                <div class="btn-group" role="group">
-                    <a href="{% url 'images:upload_images_url' object.id %}"
-                       class="btn btn-primary">
-                        <i class="fas fa-upload"></i>
-                        {% trans "Upload images" %}
-                    </a>
-
-                    {% if object.user == request.user %}
-                        <a href="{% url 'images:imageset_update_url' object.id %}"
-                           class="btn btn-secondary">
-                            <i class="fas fa-edit"></i>
-                            {% trans "Update ImageSet" %}
+                <div class="mt-3">
+                    <div class="btn-group" role="group">
+                        <a href="{% url 'images:upload_images_url' object.id %}"
+                           class="btn btn-primary">
+                            <i class="fas fa-upload"></i>
+                            {% trans "Upload images" %}
                         </a>
-                    {% endif %}
+
+                        {% if object.user == request.user %}
+                            <a href="{% url 'images:imageset_update_url' object.id %}"
+                               class="btn btn-secondary">
+                                <i class="fas fa-edit"></i>
+                                {% trans "Update ImageSet" %}
+                            </a>
+                        {% endif %}
+                    </div>
+
+                    <!-- Новые кнопки для пакетного распознавания и удаления -->
+                    <div class="btn-group ms-2" role="group">
+                        {% if object.images.count > 0 %}
+                            <a href="{% url 'images:batch_detection_url' object.id %}"
+                               class="btn btn-success">
+                                <i class="fas fa-magic"></i>
+                                {% trans "Пакетное распознавание" %}
+                            </a>
+                        {% endif %}
+
+                        {% if object.user == request.user %}
+                            <a href="{% url 'images:imageset_delete_url' object.id %}"
+                               class="btn btn-danger"
+                               onclick="return confirm('{% trans "Вы уверены, что хотите удалить этот набор и все изображения?" %}')">
+                                <i class="fas fa-trash"></i>
+                                {% trans "Удалить набор" %}
+                            </a>
+                        {% endif %}
+                    </div>
                 </div>
 
-                <!-- Новые кнопки для пакетного распознавания и удаления -->
-                <div class="btn-group ms-2" role="group">
+                <div class="mt-3">
                     {% if object.images.count > 0 %}
-                        <a href="{% url 'images:batch_detection_url' object.id %}"
-                           class="btn btn-success">
-                            <i class="fas fa-magic"></i>
-                            {% trans "Пакетное распознавание" %}
+                        <a href="{% url 'images:imagefile_list_url' object.id %}"
+                           class="btn btn-outline-primary">
+                            <i class="fas fa-images"></i>
+                            {% trans "View Images" %}
                         </a>
-                    {% endif %}
-
-                    {% if object.user == request.user %}
-                        <a href="{% url 'images:imageset_delete_url' object.id %}"
-                           class="btn btn-danger"
-                           onclick="return confirm('{% trans "Вы уверены, что хотите удалить этот набор и все изображения?" %}')">
-                            <i class="fas fa-trash"></i>
-                            {% trans "Удалить набор" %}
+                    {% else %}
+                        <a href="{% url 'images:upload_images_url' object.id %}"
+                           class="btn btn-outline-primary">
+                            <i class="fas fa-upload"></i>
+                            {% trans "View Images" %}
                         </a>
                     {% endif %}
                 </div>
-            </div>
-
-            <div class="mt-3">
-                {% if object.images.count > 0 %}
-                    <a href="{% url 'images:imagefile_list_url' object.id %}"
-                       class="btn btn-outline-primary">
-                        <i class="fas fa-images"></i>
-                        {% trans "View Images" %}
-                    </a>
-                {% else %}
-                    <a href="{% url 'images:upload_images_url' object.id %}"
-                       class="btn btn-outline-primary">
-                        <i class="fas fa-upload"></i>
-                        {% trans "View Images" %}
-                    </a>
-                {% endif %}
             </div>
         </div>
-    </div>
 
-    <!-- Добавляем информацию о статусе обработки -->
-    {% if object.images.count > 0 %}
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h6 class="mb-0">{% trans "Статистика обработки" %}</h6>
-                </div>
-                <div class="card-body">
-                    <div class="row text-center">
-                        <div class="col-md-3">
-                            <div class="border rounded p-3">
-                                <h5 class="text-primary mb-1">{{ object.images.count }}</h5>
-                                <small class="text-muted">{% trans "Всего изображений" %}</small>
-                            </div>
+        <!-- Добавляем информацию о статусе обработки -->
+        {% if object.images.count > 0 %}
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">{% trans "Статистика обработки" %}</h6>
                         </div>
-                        <div class="col-md-3">
-                            <div class="border rounded p-3">
-                                {% with object.images.filter__is_inferenced=True.count as processed_count %}
-                                <h5 class="text-success mb-1">{{ processed_count }}</h5>
-                                {% endwith %}
-                                <small class="text-muted">{% trans "Обработано" %}</small>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="border rounded p-3">
-                                {% with object.images.filter__is_inferenced=False.count as unprocessed_count %}
-                                <h5 class="text-warning mb-1">{{ unprocessed_count }}</h5>
-                                {% endwith %}
-                                <small class="text-muted">{% trans "Не обработано" %}</small>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="border rounded p-3">
-                                {% with object.images.filter__detectedimages__isnull=False.distinct.count as detected_count %}
-                                <h5 class="text-info mb-1">{{ detected_count }}</h5>
-                                {% endwith %}
-                                <small class="text-muted">{% trans "С объектами" %}</small>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-md-3">
+                                    <div class="border rounded p-3">
+                                        <h5 class="text-primary mb-1">{{ object.images.count }}</h5>
+                                        <small class="text-muted">{% trans "Всего изображений" %}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="border rounded p-3">
+                                        <h5 class="text-success mb-1">{{ processed_count }}</h5>
+                                        <small class="text-muted">{% trans "Обработано" %}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="border rounded p-3">
+                                        <h5 class="text-warning mb-1">{{ unprocessed_count }}</h5>
+                                        <small class="text-muted">{% trans "Не обработано" %}</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="border rounded p-3">
+                                        <h5 class="text-info mb-1">{{ with_objects_count }}</h5>
+                                        <small class="text-muted">{% trans "С объектами" %}</small>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Превью изображений -->
-    {% if object.images.count > 0 %}
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h6 class="mb-0">{% trans "Превью изображений" %}</h6>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        {% for image in object.images.all|slice:":12" %}
-                        <div class="col-lg-2 col-md-3 col-sm-4 col-6 mb-3">
-                            <div class="position-relative">
-                                <a href="{% url 'detectobj:detection_image_detail_url' image.id %}">
-                                    <img src="{{ image.get_imageurl }}"
-                                         class="img-fluid rounded"
-                                         style="height: 120px; width: 100%; object-fit: cover;"
-                                         alt="{{ image.name }}">
-                                </a>
-                                {% if image.is_inferenced %}
-                                    <span class="position-absolute top-0 end-0 m-1">
+            <!-- Превью изображений -->
+            {% if object.images.count > 0 %}
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">{% trans "Превью изображений" %}</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    {% for image in object.images.all|slice:":12" %}
+                                        <div class="col-lg-2 col-md-3 col-sm-4 col-6 mb-3">
+                                            <div class="position-relative">
+                                                <a href="{% url 'detectobj:detection_image_detail_url' image.id %}">
+                                                    <img src="{{ image.get_imageurl }}"
+                                                         class="img-fluid rounded"
+                                                         style="height: 120px; width: 100%; object-fit: cover;"
+                                                         alt="{{ image.name }}">
+                                                </a>
+                                                {% if image.is_inferenced %}
+                                                    <span class="position-absolute top-0 end-0 m-1">
                                         <i class="fas fa-check-circle text-success"></i>
                                     </span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                                {% if object.images.count > 12 %}
+                                    <div class="text-center mt-3">
+                                        <a href="{% url 'images:imagefile_list_url' object.id %}"
+                                           class="btn btn-outline-primary">
+                                            {% trans "Посмотреть все" %} {{ object.images.count }} {% trans "изображений" %}
+                                        </a>
+                                    </div>
                                 {% endif %}
                             </div>
                         </div>
-                        {% endfor %}
                     </div>
-                    {% if object.images.count > 12 %}
-                    <div class="text-center mt-3">
-                        <a href="{% url 'images:imagefile_list_url' object.id %}"
-                           class="btn btn-outline-primary">
-                            {% trans "Посмотреть все" %} {{ object.images.count }} {% trans "изображений" %}
-                        </a>
-                    </div>
-                    {% endif %}
                 </div>
-            </div>
-        </div>
+            {% endif %}
+        {% endif %}
     </div>
-    {% endif %}
-    {% endif %}
-</div>
 {% endblock content %}
