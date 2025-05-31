@@ -118,5 +118,6 @@ class ManualAnnotation(CreationModificationDateBase):
             "x": self.x_center,
             "y": self.y_center,
             "width": self.width,
-            "height": self.height
+            "height": self.height,
+            "is_manual": True  # Добавляем маркер для ручных аннотаций
         }

@@ -26,6 +26,118 @@ from .forms import InferencedImageForm, YoloModelForm, ManualAnnotationFormSetFa
 from modelmanager.models import MLModel
 
 
+def calculate_iou(box1, box2):
+    """
+    Вычисляет IoU (Intersection over Union) между двумя bounding box'ами.
+    Формат box: {'x': center_x, 'y': center_y, 'width': width, 'height': height}
+    """
+
+    # Преобразуем из центра в углы
+    def center_to_corners(box):
+        x_center, y_center, width, height = box['x'], box['y'], box['width'], box['height']
+        x1 = x_center - width / 2
+        y1 = y_center - height / 2
+        x2 = x_center + width / 2
+        y2 = y_center + height / 2
+        return x1, y1, x2, y2
+
+    x1_1, y1_1, x2_1, y2_1 = center_to_corners(box1)
+    x1_2, y1_2, x2_2, y2_2 = center_to_corners(box2)
+
+    # Вычисляем область пересечения
+    x1_inter = max(x1_1, x1_2)
+    y1_inter = max(y1_1, y1_2)
+    x2_inter = min(x2_1, x2_2)
+    y2_inter = min(y2_1, y2_2)
+
+    # Если нет пересечения
+    if x1_inter >= x2_inter or y1_inter >= y2_inter:
+        return 0.0
+
+    # Площадь пересечения
+    intersection = (x2_inter - x1_inter) * (y2_inter - y1_inter)
+
+    # Площади боксов
+    area1 = (x2_1 - x1_1) * (y2_1 - y1_1)
+    area2 = (x2_2 - x1_2) * (y2_2 - y1_2)
+
+    # Площадь объединения
+    union = area1 + area2 - intersection
+
+    return intersection / union if union > 0 else 0.0
+
+
+def filter_automatic_detections_by_manual(automatic_detections, manual_detections, iou_threshold=0.1):
+    """
+    Фильтрует автоматические детекции, удаляя те, которые пересекаются с ручными аннотациями.
+
+    Args:
+        automatic_detections: список автоматических детекций
+        manual_detections: список ручных аннотаций
+        iou_threshold: порог IoU для считания пересечения (по умолчанию 0.1)
+
+    Returns:
+        список автоматических детекций без пересечений с ручными
+    """
+    if not manual_detections:
+        return automatic_detections
+
+    filtered_detections = []
+
+    for auto_detection in automatic_detections:
+        # Проверяем, пересекается ли автоматическая детекция с любой ручной аннотацией
+        has_overlap = False
+
+        for manual_detection in manual_detections:
+            iou = calculate_iou(auto_detection, manual_detection)
+            print(
+                f"Проверяем пересечение: авто '{auto_detection.get('class', 'unknown')}' vs ручная '{manual_detection.get('class', 'unknown')}', IoU={iou:.3f}")
+
+            if iou > iou_threshold:
+                has_overlap = True
+                print(f"✅ УДАЛЯЕМ автоматическую детекцию класса '{auto_detection.get('class', 'unknown')}' "
+                      f"из-за пересечения (IoU={iou:.3f}) с ручной аннотацией класса '{manual_detection.get('class', 'unknown')}'")
+                break
+
+        # Если нет пересечения, добавляем автоматическую детекцию
+        if not has_overlap:
+            print(
+                f"✅ СОХРАНЯЕМ автоматическую детекцию класса '{auto_detection.get('class', 'unknown')}' - нет пересечений")
+            filtered_detections.append(auto_detection)
+
+    return filtered_detections
+
+
+def combine_detections_with_priority(automatic_detections, manual_detections, iou_threshold=0.1):
+    """
+    Объединяет автоматические и ручные детекции с приоритетом ручных.
+
+    Args:
+        automatic_detections: список автоматических детекций
+        manual_detections: список ручных аннотаций
+        iou_threshold: порог IoU для считания пересечения
+
+    Returns:
+        объединенный список детекций с приоритетом ручных аннотаций
+    """
+    print(f"🔄 ОБЪЕДИНЕНИЕ ДЕТЕКЦИЙ:")
+    print(f"  📊 Автоматических детекций: {len(automatic_detections)}")
+    print(f"  ✋ Ручных аннотаций: {len(manual_detections)}")
+
+    # Фильтруем автоматические детекции, убирая пересечения с ручными
+    filtered_auto = filter_automatic_detections_by_manual(
+        automatic_detections, manual_detections, iou_threshold
+    )
+
+    # Объединяем: сначала ручные (приоритет), потом отфильтрованные автоматические
+    combined = manual_detections + filtered_auto
+
+    print(f"  ✅ Автоматических после фильтрации: {len(filtered_auto)}")
+    print(f"  🎯 Итого объединенных детекций: {len(combined)}")
+
+    return combined
+
+
 class SaveAnnotationView(LoginRequiredMixin, FormView):
     """API для сохранения аннотаций через AJAX запросы."""
 
@@ -59,6 +171,9 @@ class SaveAnnotationView(LoginRequiredMixin, FormView):
             # Применяем аннотации к дубликатам
             self._apply_annotations_to_duplicates(image, annotation)
 
+            # Обновляем существующие инференс-записи с учетом приоритета ручных аннотаций
+            self._update_existing_inferences(image)
+
             return JsonResponse({
                 'status': 'success',
                 'message': _('Аннотация успешно сохранена'),
@@ -87,6 +202,27 @@ class SaveAnnotationView(LoginRequiredMixin, FormView):
                     created_by=annotation.created_by,
                     is_manual=True
                 )
+
+    def _update_existing_inferences(self, image):
+        """Обновляет существующие инференс-записи с учетом приоритета ручных аннотаций."""
+        manual_annotations = ManualAnnotation.objects.filter(image=image)
+        manual_detection_info = [annotation.to_detection_format() for annotation in manual_annotations]
+
+        existing_inferences = InferencedImage.objects.filter(orig_image=image)
+        for inf_img in existing_inferences:
+            is_custom_model = inf_img.custom_model is not None
+
+            if inf_img.detection_info and is_custom_model:
+                # Для кастомных моделей объединяем с приоритетом ручных аннотаций
+                combined_info = combine_detections_with_priority(
+                    inf_img.detection_info, manual_detection_info
+                )
+                inf_img.detection_info = combined_info
+                inf_img.save()
+                print(f"✅ SaveAnnotation: Обновлена кастомная модель с приоритетом: {len(combined_info)} детекций")
+            elif inf_img.detection_info and not is_custom_model:
+                # Для стандартных YOLO моделей НЕ обновляем
+                print(f"🚫 SaveAnnotation: Стандартная YOLO модель - ручные аннотации НЕ применяются")
 
 
 class ManualAnnotationView(LoginRequiredMixin, FormView):
@@ -156,109 +292,149 @@ class ManualAnnotationView(LoginRequiredMixin, FormView):
         # Применяем аннотации к дубликатам
         self._apply_annotations_to_duplicates()
 
-        # Now update any existing InferencedImage records for this image
+        # Теперь обновляем существующие InferencedImage записи с учетом приоритета ручных аннотаций
         all_annotations = ManualAnnotation.objects.filter(image=self.image)
 
         if all_annotations.exists():
-            # Convert all manual annotations to detection format
+            # Преобразуем все ручные аннотации в формат детекции
             manual_detection_info = [annotation.to_detection_format() for annotation in all_annotations]
 
-            # Update only inference records with custom models
-            existing_inferences = InferencedImage.objects.filter(orig_image=self.image, custom_model__isnull=False)
-            for inf_img in existing_inferences:
-                # Only update records with custom models
-                if inf_img.custom_model:
-                    detection_info = inf_img.detection_info or []
+            # Обновляем записи инференса ТОЛЬКО для кастомных моделей
+            existing_inferences = InferencedImage.objects.filter(orig_image=self.image)
+            updated_count = 0
 
-                    # Filter out any existing manual annotations (to avoid duplicates)
-                    model_detections = []
-                    for item in detection_info:
-                        # Check if this is a model detection (not a manual annotation)
-                        is_manual = False
-                        for annot in manual_detection_info:
-                            # Compare coordinates with a small tolerance
-                            if (abs(item.get('x', 0) - annot.get('x', 0)) < 0.01 and
-                                    abs(item.get('y', 0) - annot.get('y', 0)) < 0.01 and
-                                    abs(item.get('width', 0) - annot.get('width', 0)) < 0.01 and
-                                    abs(item.get('height', 0) - annot.get('height', 0)) < 0.01):
-                                is_manual = True
+            for inf_img in existing_inferences:
+                is_custom_model = inf_img.custom_model is not None
+
+                if is_custom_model:
+                    # Для кастомных моделей применяем приоритет ручных аннотаций
+                    # Получаем оригинальные детекции модели (без старых ручных аннотаций)
+                    original_detections = inf_img.detection_info or []
+
+                    # Фильтруем только автоматические детекции (убираем старые ручные)
+                    automatic_detections = []
+                    for item in original_detections:
+                        # Определяем автоматические детекции по отсутствию точного совпадения с ручными
+                        is_automatic = True
+                        for manual_item in manual_detection_info:
+                            if (abs(item.get('x', 0) - manual_item.get('x', 0)) < 0.01 and
+                                    abs(item.get('y', 0) - manual_item.get('y', 0)) < 0.01 and
+                                    abs(item.get('width', 0) - manual_item.get('width', 0)) < 0.01 and
+                                    abs(item.get('height', 0) - manual_item.get('height', 0)) < 0.01):
+                                is_automatic = False
                                 break
 
-                        if not is_manual:
-                            model_detections.append(item)
+                        if is_automatic:
+                            automatic_detections.append(item)
 
-                    # Combine model detections with manual annotations
-                    combined_info = model_detections + manual_detection_info
+                    # Объединяем с приоритетом ручных аннотаций
+                    combined_info = combine_detections_with_priority(
+                        automatic_detections, manual_detection_info
+                    )
 
-                    # Update the InferencedImage record's detection_info
+                    # Обновляем detection_info
                     inf_img.detection_info = combined_info
 
-                    # Now we need to regenerate the image with annotations
+                    # Перегенерируем изображение с аннотациями
                     try:
-                        # Get inference image path
-                        inf_img_path = inf_img.inf_image_path
-                        if inf_img_path.startswith(settings.MEDIA_URL):
-                            inf_img_path = inf_img_path[len(settings.MEDIA_URL):]
-                        inf_img_full_path = os.path.join(settings.MEDIA_ROOT, inf_img_path)
-
-                        # Open the original image
-                        img_path = self.image.get_imagepath
-                        img = I.open(img_path)
-
-                        # Create an annotated image with YOLO
-                        model = YOLO(inf_img.custom_model.pth_filepath)
-
-                        # Run inference
-                        results = model(img,
-                                        conf=float(
-                                            inf_img.model_conf) if inf_img.model_conf else settings.MODEL_CONFIDENCE,
-                                        verbose=False)
-
-                        # Get the first result
-                        result = results[0]
-
-                        # Plot using the result's plot method
-                        plotted_img = result.plot()
-
-                        # Create an annotator to add manual annotations
-                        annotator = Annotator(plotted_img)
-
-                        # Draw manual annotations in a different color
-                        for annotation in manual_detection_info:
-                            # Get normalized coordinates
-                            x_center = annotation.get('x', 0)
-                            y_center = annotation.get('y', 0)
-                            width = annotation.get('width', 0)
-                            height = annotation.get('height', 0)
-
-                            # Convert to pixel coordinates
-                            img_width, img_height = img.size
-                            x1 = int((x_center - width / 2) * img_width)
-                            y1 = int((y_center - height / 2) * img_height)
-                            x2 = int((x_center + width / 2) * img_width)
-                            y2 = int((y_center + height / 2) * img_height)
-
-                            # Set color (manual annotations in red)
-                            color = (255, 0, 0)  # RGB for red
-
-                            # Draw the box
-                            annotator.box_label([x1, y1, x2, y2], annotation.get('class', 'unknown'), color=color)
-
-                        # Save the final image
-                        I.fromarray(annotator.result()).save(inf_img_full_path, format="JPEG")
-
+                        self._regenerate_inference_image(inf_img, combined_info)
                     except Exception as e:
-                        print(f"Error regenerating inference image: {e}")
+                        print(f"Ошибка при перегенерации изображения инференса: {e}")
 
-                    # Save the InferencedImage record
+                    # Сохраняем запись
                     inf_img.save()
+                    updated_count += 1
 
-            if existing_inferences.exists():
+                    print(
+                        f"✅ Кастомная модель: обновлена с приоритетом ({len(automatic_detections)} авто + {len(manual_detection_info)} ручных = {len(combined_info)})")
+                else:
+                    # Для стандартных YOLO моделей НЕ применяем ручные аннотации
+                    print(f"🚫 Стандартная YOLO модель: ручные аннотации НЕ применяются к существующему инференсу")
+
+            if updated_count > 0:
                 messages.info(self.request,
-                              _("Аннотации также добавлены к существующим результатам распознавания с кастомными моделями"))
+                              _("Аннотации обновлены в %d записях с кастомными моделями") % updated_count)
 
         # Make sure to always redirect to the success URL
         return HttpResponseRedirect(self.get_success_url())
+
+    def _regenerate_inference_image(self, inf_img, combined_detections):
+        """Перегенерирует изображение инференса с обновленными аннотациями."""
+        # Получаем путь к изображению инференса
+        inf_img_path = inf_img.inf_image_path
+        if inf_img_path.startswith(settings.MEDIA_URL):
+            inf_img_path = inf_img_path[len(settings.MEDIA_URL):]
+        inf_img_full_path = os.path.join(settings.MEDIA_ROOT, inf_img_path)
+
+        # Удаляем старый файл если существует
+        if os.path.exists(inf_img_full_path):
+            os.remove(inf_img_full_path)
+            print(f"🗑️ Удален старый файл: {inf_img_full_path}")
+
+        # Открываем оригинальное изображение
+        img_path = self.image.get_imagepath
+        img = I.open(img_path)
+
+        # Разделяем детекции на автоматические и ручные
+        manual_detections = [d for d in combined_detections if d.get('is_manual', False)]
+        automatic_detections = [d for d in combined_detections if not d.get('is_manual', False)]
+
+        if inf_img.custom_model:
+            # Для кастомной модели
+            if manual_detections:
+                # Если есть ручные аннотации, рендерим ТОЛЬКО их на чистом изображении
+                annotator = Annotator(np.array(img))  # Используем оригинальное изображение
+
+                # Добавляем только ручные аннотации красным цветом
+                for detection in manual_detections:
+                    # Преобразуем нормализованные координаты в пиксельные
+                    img_width, img_height = img.size
+                    x_center = detection.get('x', 0)
+                    y_center = detection.get('y', 0)
+                    width = detection.get('width', 0)
+                    height = detection.get('height', 0)
+
+                    x1 = int((x_center - width / 2) * img_width)
+                    y1 = int((y_center - height / 2) * img_height)
+                    x2 = int((x_center + width / 2) * img_width)
+                    y2 = int((y_center + height / 2) * img_height)
+
+                    # Красный цвет для ручных аннотаций
+                    color = (255, 0, 0)
+                    annotator.box_label([x1, y1, x2, y2], detection.get('class', 'unknown'), color=color)
+
+                # Сохраняем изображение ТОЛЬКО с ручными аннотациями
+                I.fromarray(annotator.result()).save(inf_img_full_path, format="JPEG")
+                print(f"✅ Перегенерация: кастомная модель с ТОЛЬКО ручными аннотациями")
+            else:
+                # Если нет ручных аннотаций, запускаем стандартный инференс
+                model = YOLO(inf_img.custom_model.pth_filepath)
+                results = model(img,
+                                conf=float(inf_img.model_conf) if inf_img.model_conf else settings.MODEL_CONFIDENCE,
+                                verbose=False)
+                result = results[0]
+                plotted_img = result.plot()
+                I.fromarray(plotted_img).save(inf_img_full_path, format="JPEG")
+                print(f"✅ Перегенерация: кастомная модель с автоматическими детекциями")
+
+        else:
+            # Для YOLO модели - стандартная логика (не должно вызываться, но на всякий случай)
+            if inf_img.yolo_model:
+                yolo_weightsdir = settings.YOLOV8_WEIGTHS_DIR
+                model_path = os.path.join(yolo_weightsdir, inf_img.yolo_model)
+                if os.path.exists(model_path):
+                    model = YOLO(model_path)
+                else:
+                    model = YOLO(inf_img.yolo_model)
+
+                results = model(img,
+                                conf=float(inf_img.model_conf) if inf_img.model_conf else settings.MODEL_CONFIDENCE,
+                                verbose=False)
+
+                result = results[0]
+                plotted_img = result.plot()
+                I.fromarray(plotted_img).save(inf_img_full_path, format="JPEG")
+                print(f"📊 Перегенерация: стандартная YOLO модель")
 
     def _apply_annotations_to_duplicates(self):
         """Применяет аннотации текущего изображения к его дубликатам."""
@@ -380,8 +556,19 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
                 classes_list = [item.get('class') for item in inf_img_qs.detection_info]
                 context['results_counter'] = collections.Counter(classes_list)
 
-        # Получаем ВСЕ ручные аннотации (включая дубликаты)
+        # Получаем ВСЕ ручные аннотации (включая дубликаты) ТОЛЬКО для кастомных моделей
         manual_annotations = self._get_all_annotations_for_image(img_qs)
+
+        # Фильтруем ручные аннотации в зависимости от типа модели
+        if 'inf_img_qs' in context:
+            inf_img = context['inf_img_qs']
+            is_custom_inference = inf_img.custom_model is not None
+
+            if not is_custom_inference:
+                # Для стандартных YOLO моделей скрываем ручные аннотации
+                manual_annotations = []
+                print(f"🚫 Стандартная YOLO модель: ручные аннотации скрыты из контекста")
+
         context['manual_annotations'] = manual_annotations
 
         # Информация о дубликатах
@@ -400,20 +587,61 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
             inf_img = context['inf_img_qs']
             detection_info = inf_img.detection_info or []
 
+            # Проверяем, использовалась ли кастомная модель
+            is_custom_inference = inf_img.custom_model is not None
+
             # Добавляем ручные аннотации к результатам детекции
             manual_detection_info = [annotation.to_detection_format() for annotation in manual_annotations]
 
-            # Обновляем информацию о результатах
+            # Добавляем маркеры для различения типов детекций
+            for item in detection_info:
+                if 'is_manual' not in item:
+                    item['is_manual'] = item.get('confidence', 0) == 1.0  # Предполагаем, что confidence=1.0 это ручная
+
+            for item in manual_detection_info:
+                item['is_manual'] = True
+
+            print(f"🎯 КОНТЕКСТ: Применяем логику для отображения...")
+            print(f"  📊 Детекций в inf_img: {len(detection_info)}")
+            print(f"  ✋ Ручных аннотаций: {len(manual_detection_info)}")
+            print(f"  🎯 Кастомная модель в инференсе: {is_custom_inference}")
+
+            # Обновляем информацию о результатах в зависимости от типа модели
             if manual_detection_info:
-                combined_detection_info = detection_info + manual_detection_info
-                context['all_detection_info'] = combined_detection_info
+                if is_custom_inference:
+                    # Для кастомных моделей применяем приоритет ручных аннотаций
+                    automatic_detections = [item for item in detection_info if not item.get('is_manual', False)]
+
+                    combined_detection_info = combine_detections_with_priority(
+                        automatic_detections, manual_detection_info
+                    )
+                    context['all_detection_info'] = combined_detection_info
+                    print(f"✅ Кастомная модель: финальных детекций для отображения: {len(combined_detection_info)}")
+                else:
+                    # Для стандартных YOLO моделей просто объединяем без фильтрации
+                    combined_detection_info = detection_info + manual_detection_info
+                    context['all_detection_info'] = combined_detection_info
+                    print(f"✅ Стандартная YOLO: объединяем без фильтрации: {len(combined_detection_info)}")
 
                 # Обновляем счетчик классов для всех результатов
-                all_classes = [item.get('class') for item in combined_detection_info]
+                all_classes = [item.get('class') for item in context['all_detection_info']]
                 context['all_results_counter'] = collections.Counter(all_classes)
+            else:
+                context['all_detection_info'] = detection_info
 
-        # Добавляем ссылку на страницу ручной разметки
+        # Добавляем ссылку на страницу ручной разметки ТОЛЬКО для кастомных моделей
         context['manual_annotation_url'] = reverse('detectobj:manual_annotation_url', kwargs={'pk': img_qs.id})
+
+        # Определяем, показывать ли кнопку ручной разметки
+        show_manual_annotation = True
+        if 'inf_img_qs' in context:
+            inf_img = context['inf_img_qs']
+            is_custom_inference = inf_img.custom_model is not None
+            show_manual_annotation = is_custom_inference
+            if not is_custom_inference:
+                print(f"🚫 Стандартная YOLO модель: кнопка ручной разметки скрыта")
+
+        context['show_manual_annotation'] = show_manual_annotation
 
         context["img_qs"] = img_qs
         context["form1"] = YoloModelForm()
@@ -552,18 +780,6 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
                             if r.names[idx].lower() in ['cat', 'giraffe']:
                                 r.names[idx] = 'irbis'
 
-                    # Some YOLOv8 versions might store class names differently
-                    if hasattr(r, 'model') and hasattr(r.model, 'names'):
-                        for idx in r.model.names:
-                            if r.model.names[idx].lower() in ['cat', 'giraffe']:
-                                r.model.names[idx] = 'irbis'
-
-                    # Another possible location for class names
-                    if hasattr(r, 'cls') and hasattr(r.cls, 'names'):
-                        for idx in r.cls.names:
-                            if r.cls.names[idx].lower() in ['cat', 'giraffe']:
-                                r.cls.names[idx] = 'irbis'
-
             # Save the annotated image with a unique name based on model type
             if custom_model_id:
                 img_file_suffix = f"custom_{custom_model_id}"
@@ -574,104 +790,130 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
             img_filename = f"{os.path.splitext(img_qs.name)[0]}_{img_file_suffix}{os.path.splitext(img_qs.name)[1]}"
             img_path = os.path.join(inferenced_img_dir, img_filename)
 
-            # If custom model, print class names right before plotting
-            if is_custom_model:
-                print("Class names right before plotting:", model.names)
-                print("First result names:", getattr(results[0], 'names', 'No names attribute'))
-
             # Create a new inference image record each time (don't use get_or_create)
             inf_img = InferencedImage(
                 orig_image=img_qs,
                 inf_image_path=f"{settings.MEDIA_URL}inferenced_image/{img_filename}",
             )
-            inf_img.detection_info = results_list
+
+            # Обрабатываем ручные аннотации с приоритетом ТОЛЬКО для кастомных моделей
+            manual_detection_info = []
+            if manual_annotations and is_custom_model:  # Приоритет только для кастомных моделей
+                manual_detection_info = [annotation.to_detection_format() for annotation in manual_annotations]
+                # Добавляем специальный маркер для ручных аннотаций
+                for item in manual_detection_info:
+                    item['is_manual'] = True
+                    item['confidence'] = 1.0  # Ручные аннотации всегда имеют confidence 1.0
+
+            # Добавляем маркер для автоматических детекций
+            for item in results_list:
+                item['is_manual'] = False
+
+            print(f"🔍 ОБРАБОТКА ДЕТЕКЦИЙ:")
+            print(f"  📊 Автоматических детекций: {len(results_list)}")
+            print(f"  ✋ Ручных аннотаций: {len(manual_annotations) if manual_annotations else 0}")
+            print(f"  🎯 Кастомная модель: {is_custom_model}")
+
+            # Объединяем детекции с приоритетом ручных аннотаций ТОЛЬКО для кастомных моделей
+            if manual_detection_info and is_custom_model:
+                print("🎯 Применяем приоритет ручных аннотаций для кастомной модели...")
+                combined_detection_info = combine_detections_with_priority(
+                    results_list, manual_detection_info
+                )
+                inf_img.detection_info = combined_detection_info
+                print(f"✅ Финальное количество детекций: {len(combined_detection_info)}")
+            elif manual_annotations and not is_custom_model:
+                # Для стандартных YOLO моделей просто добавляем ручные аннотации БЕЗ фильтрации
+                all_manual_detection_info = [annotation.to_detection_format() for annotation in manual_annotations]
+                for item in all_manual_detection_info:
+                    item['is_manual'] = True
+                combined_info = results_list + all_manual_detection_info
+                inf_img.detection_info = combined_info
+                print(
+                    f"📊 Стандартная YOLO модель: объединяем без фильтрации ({len(results_list)} авто + {len(all_manual_detection_info)} ручных = {len(combined_info)})")
+            else:
+                inf_img.detection_info = results_list
+                print(f"📊 Только автоматические детекции: {len(results_list)}")
+
             inf_img.model_conf = modelconf
             if custom_model_id:
                 inf_img.custom_model = detection_model
             elif yolo_model_name:
                 inf_img.yolo_model = yolo_model_name
 
-            # Process manual annotations only if using a custom model
+            # Создание изображения с аннотациями
             if manual_annotations and is_custom_model:
-                # Convert manual annotations to detection format
-                manual_detection_info = [annotation.to_detection_format() for annotation in manual_annotations]
+                # Для кастомной модели с ручными аннотациями рендерим ТОЛЬКО ручные аннотации на чистом изображении
+                all_manual_detection_info = [annotation.to_detection_format() for annotation in manual_annotations]
+                annotator = Annotator(np.array(img))  # ЧИСТОЕ изображение без автоматических детекций
 
-                # Add them to the detection results
-                if not results_list:
-                    # If no objects were detected by the model, use only manual annotations
-                    inf_img.detection_info = manual_detection_info
-                else:
-                    # Otherwise, combine model detections with manual annotations
-                    inf_img.detection_info = results_list + manual_detection_info
+                # Draw ONLY manual annotations in red
+                for annotation in all_manual_detection_info:
+                    # Get normalized coordinates
+                    x_center = annotation.get('x', 0)
+                    y_center = annotation.get('y', 0)
+                    width = annotation.get('width', 0)
+                    height = annotation.get('height', 0)
 
-                # Handle image creation with annotations
-                if results_list:
-                    # Get the result from inference
-                    result = results[0]
+                    # Convert to pixel coordinates
+                    img_width, img_height = img.size
+                    x1 = int((x_center - width / 2) * img_width)
+                    y1 = int((y_center - height / 2) * img_height)
+                    x2 = int((x_center + width / 2) * img_width)
+                    y2 = int((y_center + height / 2) * img_height)
 
-                    # Plot using the result's plot method
-                    plotted_img = result.plot()
+                    # Set color (manual annotations in red)
+                    color = (255, 0, 0)  # RGB for red
 
-                    # Create an annotator to add manual annotations
-                    annotator = Annotator(plotted_img)
+                    # Draw the box
+                    annotator.box_label([x1, y1, x2, y2], annotation.get('class', 'unknown'), color=color)
 
-                    # Draw manual annotations in a different color
-                    for annotation in manual_detection_info:
-                        # Get normalized coordinates
-                        x_center = annotation.get('x', 0)
-                        y_center = annotation.get('y', 0)
-                        width = annotation.get('width', 0)
-                        height = annotation.get('height', 0)
+                # Save the image with ONLY manual annotations
+                I.fromarray(annotator.result()).save(img_path, format="JPEG")
+                print(f"✅ Кастомная модель: сохранено ЧИСТОЕ изображение ТОЛЬКО с ручными аннотациями")
 
-                        # Convert to pixel coordinates
-                        img_width, img_height = img.size
-                        x1 = int((x_center - width / 2) * img_width)
-                        y1 = int((y_center - height / 2) * img_height)
-                        x2 = int((x_center + width / 2) * img_width)
-                        y2 = int((y_center + height / 2) * img_height)
-
-                        # Set color (manual annotations in red)
-                        color = (255, 0, 0)  # RGB for red
-
-                        # Draw the box
-                        annotator.box_label([x1, y1, x2, y2], annotation.get('class', 'unknown'), color=color)
-
-                    # Save the final image with manual annotations
-                    I.fromarray(annotator.result()).save(img_path, format="JPEG")
-                else:
-                    # No model results, just manual annotations
-                    # Create a plain image with just manual annotations
-                    annotator = Annotator(np.array(img))
-
-                    # Draw manual annotations
-                    for annotation in manual_detection_info:
-                        # Get normalized coordinates
-                        x_center = annotation.get('x', 0)
-                        y_center = annotation.get('y', 0)
-                        width = annotation.get('width', 0)
-                        height = annotation.get('height', 0)
-
-                        # Convert to pixel coordinates
-                        img_width, img_height = img.size
-                        x1 = int((x_center - width / 2) * img_width)
-                        y1 = int((y_center - height / 2) * img_height)
-                        x2 = int((x_center + width / 2) * img_width)
-                        y2 = int((y_center + height / 2) * img_height)
-
-                        # Set color (manual annotations in red)
-                        color = (255, 0, 0)  # RGB for red
-
-                        # Draw the box
-                        annotator.box_label([x1, y1, x2, y2], annotation.get('class', 'unknown'), color=color)
-
-                    # Save the image with manual annotations
-                    I.fromarray(annotator.result()).save(img_path, format="JPEG")
             elif results_list:
-                # No manual annotations or not using custom model, just save the regular plotted image
-                plotted_img = results[0].plot()
+                # Для всех остальных случаев (стандартная YOLO или кастомная без ручных аннотаций)
+                result = results[0]
+                plotted_img = result.plot()
                 I.fromarray(plotted_img).save(img_path, format="JPEG")
 
-            # Save inference image with combined annotations
+                if is_custom_model:
+                    print(f"✅ Кастомная модель: сохранено изображение с автоматическими детекциями (нет ручных)")
+                else:
+                    print(f"📊 Стандартная YOLO: сохранено изображение с автоматическими детекциями")
+
+            elif manual_annotations and is_custom_model:
+                # No model results, just manual annotations (только для кастомных моделей)
+                all_manual_detection_info = [annotation.to_detection_format() for annotation in manual_annotations]
+                annotator = Annotator(np.array(img))
+
+                # Draw manual annotations
+                for annotation in all_manual_detection_info:
+                    # Get normalized coordinates
+                    x_center = annotation.get('x', 0)
+                    y_center = annotation.get('y', 0)
+                    width = annotation.get('width', 0)
+                    height = annotation.get('height', 0)
+
+                    # Convert to pixel coordinates
+                    img_width, img_height = img.size
+                    x1 = int((x_center - width / 2) * img_width)
+                    y1 = int((y_center - height / 2) * img_height)
+                    x2 = int((x_center + width / 2) * img_width)
+                    y2 = int((y_center + height / 2) * img_height)
+
+                    # Set color (manual annotations in red)
+                    color = (255, 0, 0)  # RGB for red
+
+                    # Draw the box
+                    annotator.box_label([x1, y1, x2, y2], annotation.get('class', 'unknown'), color=color)
+
+                # Save the image with manual annotations
+                I.fromarray(annotator.result()).save(img_path, format="JPEG")
+                print(f"✅ Кастомная модель: сохранено изображение только с ручными аннотациями")
+
+            # Save inference image
             inf_img.save()
 
             # Get the latest inference for display
@@ -704,8 +946,15 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
         # Add manual annotations to context
         context["manual_annotations"] = manual_annotations
 
-        # Add link to manual annotation page
+        # Add link to manual annotation page ТОЛЬКО для кастомных моделей
         context['manual_annotation_url'] = reverse('detectobj:manual_annotation_url', kwargs={'pk': img_qs.id})
+
+        # Определяем, показывать ли кнопку ручной разметки
+        show_manual_annotation = is_custom_model  # В POST методе используем флаг из обработки
+        context['show_manual_annotation'] = show_manual_annotation
+
+        if not is_custom_model:
+            print(f"🚫 POST: Стандартная YOLO модель - кнопка ручной разметки скрыта")
 
         # Add the latest inferenced image to the context if available
         if inf_img_qs:
