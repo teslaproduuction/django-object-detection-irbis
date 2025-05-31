@@ -1,50 +1,84 @@
 {% load i18n %}
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top fixed-top mb-4">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="{% url 'home_url' %}">{% trans "Обнаружение объектов" %}</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
-                aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+{% load static %}
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-gradient-dark sticky-top fixed-top mb-4 shadow-lg">
+    <div class="container-fluid px-4">
+        <!-- Brand -->
+        <a class="navbar-brand fw-bold d-flex align-items-center" href="{% url 'home_url' %}">
+            <div class="brand-icon me-2">
+                🐱
+            </div>
+            <span class="brand-text">{% trans "Обнаружение объектов" %}</span>
+        </a>
+
+        <!-- Mobile toggle button -->
+        <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent"
+                aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
-        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+
+        <!-- Navbar content -->
+        <div class="collapse navbar-collapse" id="navbarContent">
+            <!-- Left side navigation -->
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 <li class="nav-item">
-                    <a class="nav-link" href="{% url 'images:imageset_list_url' %}">{% trans "Наборы изображений" %}</a>
+                    <a class="nav-link nav-link-custom d-flex align-items-center"
+                       href="{% url 'images:imageset_list_url' %}">
+                        <i class="fas fa-images me-2"></i>
+                        {% trans "Наборы изображений" %}
+                    </a>
                 </li>
+
+                <!-- Models dropdown -->
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
-                       aria-expanded="false">
+                    <a class="nav-link dropdown-toggle nav-link-custom d-flex align-items-center"
+                       href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-brain me-2"></i>
                         {% trans "Модели" %}
                     </a>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item"
-                               href="{% url 'modelmanager:mlmodel_upload_url' %}">{% trans "Загрузить модель" %}</a>
-                        </li>
-                        <li><a class="dropdown-item"
-                               href="{% url 'modelmanager:public_mlmodel_list_url' %}">{% trans "Список моделей" %}</a>
+                    <ul class="dropdown-menu dropdown-menu-custom shadow">
+                        <li>
+                            <a class="dropdown-item dropdown-item-custom"
+                               href="{% url 'modelmanager:mlmodel_upload_url' %}">
+                                <i class="fas fa-upload me-2 text-success"></i>
+                                {% trans "Загрузить модель" %}
+                            </a>
                         </li>
                         <li>
-                            <hr class="dropdown-divider">
+                            <a class="dropdown-item dropdown-item-custom"
+                               href="{% url 'modelmanager:public_mlmodel_list_url' %}">
+                                <i class="fas fa-list me-2 text-info"></i>
+                                {% trans "Список моделей" %}
+                            </a>
                         </li>
-                        <li><a class="dropdown-item"
-                               href="{% url 'modelmanager:user_mlmodel_list_url' %}">{% trans "Мои модели" %}</a></li>
-                        <!-- Добавьте новый пункт меню в templates/partials/_nav.html -->
-                        <!-- В выпадающем меню "Модели" после пункта "Мои модели" -->
-
-                        <li><a class="dropdown-item"
-                               href="{% url 'modelmanager:model_training_stats_default_url' %}">{% trans "Статистика обучения" %}</a>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item dropdown-item-custom"
+                               href="{% url 'modelmanager:user_mlmodel_list_url' %}">
+                                <i class="fas fa-user-cog me-2 text-primary"></i>
+                                {% trans "Мои модели" %}
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item dropdown-item-custom"
+                               href="{% url 'modelmanager:model_training_stats_default_url' %}">
+                                <i class="fas fa-chart-line me-2 text-warning"></i>
+                                {% trans "Статистика обучения" %}
+                            </a>
                         </li>
                     </ul>
                 </li>
             </ul>
-            <div class="d-flex">
-                <!-- Переключатель языков -->
-                <div class="language-chooser mx-3">
+
+            <!-- Right side content -->
+            <div class="d-flex align-items-center">
+                <!-- Language chooser -->
+                <div class="language-chooser me-3">
                     <form action="{% url 'set_language' %}" method="post" class="d-inline">
                         {% csrf_token %}
                         <input name="next" type="hidden" value="{{ request.path }}"/>
                         <select name="language" onchange="this.form.submit()"
-                                class="form-select form-select-sm bg-dark text-white">
+                                class="form-select form-select-sm language-select">
                             {% get_current_language as CURRENT_LANGUAGE %}
                             {% get_available_languages as LANGUAGES %}
                             {% for lang_code, lang_name in LANGUAGES %}
@@ -57,24 +91,385 @@
                     </form>
                 </div>
 
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                    {% if user.is_authenticated %}
-                        <li class="nav-item">
-                            <a class="nav-link active" href="{% url 'users:profile' %}">{{ request.user|capfirst }}</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link active" href="{% url 'users:logout' %}">{% trans "Выход" %}</a>
-                        </li>
-                    {% else %}
-                        <li class="nav-item active">
-                            <a class="nav-link" href="{% url 'users:login' %}">{% trans "Вход" %}</a>
-                        </li>
-                        <li class="nav-item active">
-                            <a class="nav-link" href="{% url 'users:register' %}">{% trans "Регистрация" %}</a>
-                        </li>
-                    {% endif %}
-                </ul>
+                <!-- User section -->
+                {% if user.is_authenticated %}
+                    <div class="dropdown">
+                        <a class="nav-link dropdown-toggle user-dropdown d-flex align-items-center"
+                           href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <!-- User avatar -->
+                            <div class="user-avatar me-2">
+                                {% if user.profile.image %}
+                                    <img src="{{ user.profile.image.url }}"
+                                         alt="{{ user.username }}"
+                                         class="rounded-circle">
+                                {% else %}
+                                    <div class="avatar-placeholder rounded-circle d-flex align-items-center justify-content-center">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- User info -->
+                            <div class="user-info d-none d-md-block">
+                                <div class="user-name">{{ user.username|capfirst }}</div>
+                                <div class="user-role">{% trans "Пользователь" %}</div>
+                            </div>
+                        </a>
+
+                        <ul class="dropdown-menu dropdown-menu-end dropdown-menu-custom shadow">
+                            <li class="dropdown-header">
+                                <div class="d-flex align-items-center">
+                                    <div class="user-avatar-small me-2">
+                                        {% if user.profile.image %}
+                                            <img src="{{ user.profile.image.url }}"
+                                                 alt="{{ user.username }}"
+                                                 class="rounded-circle">
+                                        {% else %}
+                                            <div class="avatar-placeholder-small rounded-circle d-flex align-items-center justify-content-center">
+                                                <i class="fas fa-user"></i>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold">{{ user.username|capfirst }}</div>
+                                        <small class="text-muted text-truncate d-block" style="max-width: 180px;" title="{{ user.email }}">{{ user.email }}</small>
+                                    </div>
+                                </div>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item dropdown-item-custom"
+                                   href="{% url 'users:profile' %}">
+                                    <i class="fas fa-user-circle me-2 text-primary"></i>
+                                    {% trans "Профиль" %}
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item dropdown-item-custom"
+                                   href="{% url 'images:imageset_list_url' %}?view=user">
+                                    <i class="fas fa-folder me-2 text-success"></i>
+                                    {% trans "Мои наборы" %}
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item dropdown-item-custom"
+                                   href="{% url 'modelmanager:user_mlmodel_list_url' %}">
+                                    <i class="fas fa-brain me-2 text-info"></i>
+                                    {% trans "Мои модели" %}
+                                </a>
+                            </li>
+                            {% if user.is_staff %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item dropdown-item-custom"
+                                   href="/admin/" target="_blank">
+                                    <i class="fas fa-cogs me-2 text-warning"></i>
+                                    {% trans "Админ-панель" %}
+                                </a>
+                            </li>
+                            {% endif %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item dropdown-item-custom text-danger"
+                                   href="{% url 'users:logout' %}">
+                                    <i class="fas fa-sign-out-alt me-2"></i>
+                                    {% trans "Выход" %}
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                {% else %}
+                    <!-- Not authenticated -->
+                    <div class="auth-buttons">
+                        <a class="btn btn-outline-light btn-sm me-2"
+                           href="{% url 'users:login' %}">
+                            <i class="fas fa-sign-in-alt me-1"></i>
+                            {% trans "Вход" %}
+                        </a>
+                        <a class="btn btn-primary btn-sm"
+                           href="{% url 'users:register' %}">
+                            <i class="fas fa-user-plus me-1"></i>
+                            {% trans "Регистрация" %}
+                        </a>
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>
 </nav>
+
+<style>
+/* Remove any body margins/padding that might cause white space */
+body {
+    margin: 0 !important;
+    padding-top: 0 !important;
+}
+
+/* Ensure navbar takes full width and has no margins */
+.navbar {
+    margin: 0 !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100vw !important;
+    z-index: 1030;
+}
+
+/* Navbar custom styles */
+.bg-gradient-dark {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+}
+
+.navbar-brand {
+    font-size: 1.4rem;
+    transition: all 0.3s ease;
+}
+
+.navbar-brand:hover {
+    transform: scale(1.05);
+}
+
+.brand-icon {
+    font-size: 1.8rem;
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
+}
+
+.brand-text {
+    background: linear-gradient(45deg, #fff, #e3f2fd);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Navigation links */
+.nav-link-custom {
+    position: relative;
+    transition: all 0.3s ease;
+    border-radius: 0.5rem;
+    margin: 0 0.2rem;
+    padding: 0.5rem 1rem !important;
+}
+
+.nav-link-custom:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
+}
+
+.nav-link-custom::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 0;
+    height: 2px;
+    background: linear-gradient(45deg, #64b5f6, #42a5f5);
+    transition: all 0.3s ease;
+    transform: translateX(-50%);
+}
+
+.nav-link-custom:hover::after {
+    width: 80%;
+}
+
+/* Dropdown menu */
+.dropdown-menu-custom {
+    border: none;
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    margin-top: 0.5rem;
+    min-width: 250px;
+}
+
+.dropdown-item-custom {
+    padding: 0.75rem 1.5rem;
+    transition: all 0.3s ease;
+    border-radius: 0.5rem;
+    margin: 0.2rem;
+}
+
+.dropdown-item-custom:hover {
+    background: linear-gradient(45deg, #e3f2fd, #f3e5f5);
+    transform: translateX(5px);
+}
+
+/* User avatar */
+.user-avatar,
+.user-avatar img {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+}
+
+.avatar-placeholder {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(45deg, #64b5f6, #42a5f5);
+    color: white;
+    font-size: 1.2rem;
+}
+
+.user-avatar-small,
+.user-avatar-small img {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+}
+
+.avatar-placeholder-small {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(45deg, #64b5f6, #42a5f5);
+    color: white;
+    font-size: 1rem;
+}
+
+.user-dropdown {
+    border-radius: 1rem;
+    padding: 0.5rem 1rem !important;
+    transition: all 0.3s ease;
+    color: white !important;
+}
+
+.user-dropdown:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white !important;
+}
+
+.user-info {
+    text-align: left;
+}
+
+.user-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    line-height: 1.2;
+    color: white !important;
+}
+
+.user-role {
+    font-size: 0.75rem;
+    opacity: 0.8;
+    line-height: 1;
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Email truncation in dropdown */
+.dropdown-header small {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+}
+
+/* Language selector */
+.language-select {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    border-radius: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+}
+
+.language-select:focus {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25);
+    color: white;
+}
+
+.language-select option {
+    background-color: #1a1a2e;
+    color: white;
+}
+
+/* Auth buttons */
+.auth-buttons .btn {
+    border-radius: 0.5rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.auth-buttons .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Mobile responsive */
+@media (max-width: 991.98px) {
+    .navbar-nav {
+        margin-top: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .nav-link-custom {
+        margin: 0.2rem 0;
+    }
+
+    .user-info {
+        display: block !important;
+        margin-top: 0.5rem;
+    }
+
+    .language-chooser {
+        margin: 1rem 0;
+    }
+
+    .auth-buttons {
+        margin-top: 1rem;
+    }
+
+    .auth-buttons .btn {
+        display: block;
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+}
+
+/* Dropdown header styling */
+.dropdown-header {
+    padding: 1rem 1.5rem 0.5rem;
+    background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+    border-radius: 1rem 1rem 0 0;
+    margin: -0.5rem -0.5rem 0.5rem;
+}
+
+/* Shadow and animation effects */
+.navbar {
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+}
+
+.dropdown-menu-custom {
+    animation: fadeInDown 0.3s ease;
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Navbar toggler custom */
+.navbar-toggler {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.navbar-toggler:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.navbar-toggler:focus {
+    box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25);
+}
+</style>

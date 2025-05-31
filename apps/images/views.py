@@ -2,6 +2,7 @@ import os
 import io
 from PIL import Image as I
 import torch
+from django.views import View
 from ultralytics import YOLO
 
 from django.shortcuts import render, redirect, get_object_or_404
@@ -39,13 +40,79 @@ class ImageSetListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+
+        # Получаем публичные и пользовательские наборы
         public_imagesets = ImageSet.objects.filter(
             public=True).order_by('-created')
         user_imagesets = ImageSet.objects.filter(
             user=self.request.user).order_by('-created')
+
+        # Добавляем статистику для каждого набора в текущей странице
+        imagesets_with_stats = []
+        for imageset in context['imagesets']:
+            # Подсчитываем статистику для каждого набора (как на странице детализации)
+            total_images = imageset.images.count()
+            processed_images = imageset.images.filter(is_inferenced=True).count()
+            unprocessed_images = imageset.images.filter(is_inferenced=False).count()
+            images_with_objects = imageset.images.filter(
+                detectedimages__isnull=False
+            ).distinct().count()
+
+            # Вычисляем процент обработки
+            if total_images > 0:
+                inferenced_percentage = round((processed_images / total_images) * 100, 1)
+            else:
+                inferenced_percentage = 0
+
+            # Добавляем вычисленные поля к объекту
+            imageset.total_images_count = total_images
+            imageset.inferenced_images_count = processed_images
+            imageset.not_inferenced_images_count = unprocessed_images
+            imageset.images_with_objects_count = images_with_objects
+            imageset.inferenced_percentage = inferenced_percentage
+
+            imagesets_with_stats.append(imageset)
+
+        # Обновляем контекст
+        context['imagesets'] = imagesets_with_stats
         context["public_imagesets"] = public_imagesets
         context["user_imagesets"] = user_imagesets
         context["view_type"] = self.request.GET.get('view', 'personal')
+
+        # Общая статистика для боковой панели (суммируем по всем наборам пользователя)
+        total_images_all = 0
+        processed_images_all = 0
+        unprocessed_images_all = 0
+        images_with_objects_all = 0
+
+        for imageset in user_imagesets:
+            total_images = imageset.images.count()
+            processed_images = imageset.images.filter(is_inferenced=True).count()
+            unprocessed_images = imageset.images.filter(is_inferenced=False).count()
+            images_with_objects = imageset.images.filter(
+                detectedimages__isnull=False
+            ).distinct().count()
+
+            total_images_all += total_images
+            processed_images_all += processed_images
+            unprocessed_images_all += unprocessed_images
+            images_with_objects_all += images_with_objects
+
+        # Общий процент обработки
+        if total_images_all > 0:
+            overall_percentage = round((processed_images_all / total_images_all) * 100, 1)
+        else:
+            overall_percentage = 0
+
+        context.update({
+            'total_images_all': total_images_all,
+            'processed_images_all': processed_images_all,
+            'pending_images_all': unprocessed_images_all,
+            'images_with_objects_all': images_with_objects_all,
+            'overall_percentage': overall_percentage,
+            'current_user': self.request.user,
+        })
+
         return context
 
 
@@ -114,29 +181,44 @@ class ImageSetDeleteView(LoginRequiredMixin, DeleteView):
         )
         return response
 
+class ImagesUploadView(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        imageset_id = self.kwargs.get("pk")
+        imageset = get_object_or_404(ImageSet, id=imageset_id)
+        context = {
+            'imageset': imageset,
+        }
+        return render(request, 'images/imagefile_form.html', context)
 
-class ImageFileCreateView(LoginRequiredMixin, CreateView):
-    model = ImageFile
-    fields = ["image"]
-    template_name = "images/imagefile_form.html"
+    def post(self, request, *args, **kwargs):
+        imageset_id = self.kwargs.get("pk")
+        imageset = get_object_or_404(ImageSet, id=imageset_id)
+        if self.request.method == 'POST':
+            images = [
+                self.request.FILES.get("file[%d]" % i)
+                for i in range(len(self.request.FILES))
+            ]
+            for img in images:
+                if not ImageFile.objects.filter(name=img.name, image_set=imageset).exists():
+                    ImageFile.objects.create(
+                        name=img.name, image=img, image_set=imageset)
 
-    def dispatch(self, request, *args, **kwargs):
-        self.imageset = get_object_or_404(ImageSet, id=self.kwargs['imageset_id'])
-        return super().dispatch(request, *args, **kwargs)
+                else:
+                    print(f"Image {img.name} already exists in the imageset.")
 
-    def form_valid(self, form):
-        form.instance.image_set = self.imageset
-        return super().form_valid(form)
+            message = f"Uploading images to the Imageset: {imageset}. \
+                Automatic redirect to the images list after completion."
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['imageset'] = self.imageset
-        return context
-
-    def get_success_url(self):
-        return reverse('images:imageset_detail_url', kwargs={'pk': self.imageset.id})
-
-
+            redirect_to = reverse_lazy(
+                "images:images_list_url", args=[imageset.id])
+            return JsonResponse({"result": "result",
+                                "message": message,
+                                 "redirect_to": redirect_to,
+                                 "files_length": len(images),
+                                 },
+                                status=200,
+                                content_type="application/json"
+                                )
 class ImageFileListView(LoginRequiredMixin, ListView):
     model = ImageFile
     template_name = "images/imagefile_list.html"
@@ -288,12 +370,13 @@ class BatchDetectionView(LoginRequiredMixin, FormView):
     def process_batch_detection(self, yolo_model_name, custom_model, model_conf):
         """Выполняет пакетное распознавание для всех изображений в наборе."""
 
-        # Определяем тип модели (добавить эту строку)
+        # Определяем тип модели
         is_custom_model = custom_model is not None
 
         # Загрузка модели
         if is_custom_model:
-            model = YOLO(custom_model.model_file.path)
+            # ИСПРАВЛЕНИЕ: используем pth_file вместо model_file
+            model = YOLO(custom_model.pth_file.path)
             img_file_suffix = f"custom_{custom_model.id}"
         else:
             model = YOLO(yolo_model_name)  # Автоматически загружает модель по имени
@@ -320,10 +403,10 @@ class BatchDetectionView(LoginRequiredMixin, FormView):
         detected_images = []
 
         # Обрабатываем каждое изображение в наборе
-        for image_file in self.imageset.images.all():
+        for image_obj in self.imageset.images.all():
             try:
                 # Загружаем изображение
-                img_bytes = image_file.image.read()
+                img_bytes = image_obj.image.read()
                 img = I.open(io.BytesIO(img_bytes))
 
                 # Запускаем распознавание
@@ -369,7 +452,7 @@ class BatchDetectionView(LoginRequiredMixin, FormView):
                     else:
                         img_file_suffix = f"yolo_{os.path.splitext(yolo_model_name)[0]}"
 
-                    img_filename = f"{os.path.splitext(image_file.name)[0]}_{img_file_suffix}{os.path.splitext(image_file.name)[1]}"
+                    img_filename = f"{os.path.splitext(image_obj.name)[0]}_{img_file_suffix}{os.path.splitext(image_obj.name)[1]}"
                     img_path = os.path.join(inferenced_img_dir, img_filename)
 
                     # Сохраняем изображение с аннотациями
@@ -379,7 +462,7 @@ class BatchDetectionView(LoginRequiredMixin, FormView):
 
                     # Создаем запись в базе данных
                     inf_img = InferencedImage.objects.create(
-                        orig_image=image_file,
+                        orig_image=image_obj,
                         inf_image_path=f"{settings.MEDIA_URL}inferenced_image/{img_filename}",
                         detection_info=detection_boxes,
                         model_conf=model_conf,
@@ -387,22 +470,22 @@ class BatchDetectionView(LoginRequiredMixin, FormView):
                         yolo_model=yolo_model_name if not is_custom_model else None,
                     )
 
-                    # Добавляем в список обнаруженных
+                    # ИСПРАВЛЕНИЕ: используем get_imageurl без скобок (это свойство, а не метод)
                     detected_images.append({
-                        'id': image_file.id,
-                        'name': image_file.name,
-                        'url': image_file.get_imageurl(),
+                        'id': image_obj.id,
+                        'name': image_obj.name,
+                        'url': image_obj.get_imageurl,
                         'inference_url': inf_img.inf_image_path,
                         'detections_count': len(detection_boxes),
                         'classes': list(set([d['class'] for d in detection_boxes]))
                     })
 
                     # Помечаем изображение как обработанное
-                    image_file.is_inferenced = True
-                    image_file.save()
+                    image_obj.is_inferenced = True
+                    image_obj.save()
 
             except Exception as e:
-                print(f"Ошибка при обработке изображения {image_file.name}: {e}")
+                print(f"Ошибка при обработке изображения {image_obj.name}: {e}")
                 continue
 
         # Очищаем кэш CUDA если доступен
@@ -434,20 +517,22 @@ class BatchDetectionResultsView(LoginRequiredMixin, TemplateView):
         if batch_results.get('imageset_id') == self.imageset.id:
             context.update(batch_results)
             # Очищаем результаты из сессии
-            del self.request.session['batch_results']
+            if 'batch_results' in self.request.session:
+                del self.request.session['batch_results']
         else:
             # Если нет результатов в сессии, получаем последние результаты из БД
             latest_inferences = InferencedImage.objects.filter(
                 orig_image__image_set=self.imageset
-            ).order_by('-detection_timestamp')[:20]
+            ).filter(detection_info__isnull=False).order_by('-detection_timestamp')[:20]
 
             detected_images = []
             for inf in latest_inferences:
                 if inf.detection_info:
+                    # ИСПРАВЛЕНИЕ: используем get_imageurl без скобок
                     detected_images.append({
                         'id': inf.orig_image.id,
                         'name': inf.orig_image.name,
-                        'url': inf.orig_image.get_imageurl(),
+                        'url': inf.orig_image.get_imageurl,
                         'inference_url': inf.inf_image_path,
                         'detections_count': len(inf.detection_info),
                         'classes': list(set([d['class'] for d in inf.detection_info]))
@@ -460,9 +545,27 @@ class BatchDetectionResultsView(LoginRequiredMixin, TemplateView):
 
         return context
 
+
 class ImagesDeleteUrl(LoginRequiredMixin, DeleteView):
     model = ImageFile
 
     def get_success_url(self):
         qs = self.get_object()
         return qs.get_delete_url()
+
+class ImagesListView(LoginRequiredMixin, ListView):
+    model = ImageFile
+    context_object_name = 'images'
+
+    def get_queryset(self):
+        imageset_id = self.kwargs.get('pk')
+        return super().get_queryset().filter(image_set__id=imageset_id)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        imageset_id = self.kwargs.get('pk')
+        imageset = get_object_or_404(ImageSet, id=imageset_id)
+        context["imageset"] = imageset
+        return context
+
+

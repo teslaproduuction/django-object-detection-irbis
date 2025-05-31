@@ -19,17 +19,21 @@
                 <div class="border-top pt-3">
                     <h6>{% trans "Фильтры" %}</h6>
                     {% if request.GET.view == 'public' %}
-                        <a href="{% url 'images:imageset_list_url' %}?view=public" class="btn btn-primary btn-sm w-100 mb-1">
+                        <a href="{% url 'images:imageset_list_url' %}?view=public"
+                           class="btn btn-primary btn-sm w-100 mb-1">
                             {% trans "Публичные наборы" %}
                         </a>
-                        <a href="{% url 'images:imageset_list_url' %}?view=user" class="btn btn-outline-secondary btn-sm w-100">
+                        <a href="{% url 'images:imageset_list_url' %}?view=user"
+                           class="btn btn-outline-secondary btn-sm w-100">
                             {% trans "Мои наборы" %}
                         </a>
                     {% else %}
-                        <a href="{% url 'images:imageset_list_url' %}?view=user" class="btn btn-primary btn-sm w-100 mb-1">
+                        <a href="{% url 'images:imageset_list_url' %}?view=user"
+                           class="btn btn-primary btn-sm w-100 mb-1">
                             {% trans "Мои наборы" %}
                         </a>
-                        <a href="{% url 'images:imageset_list_url' %}?view=public" class="btn btn-outline-secondary btn-sm w-100">
+                        <a href="{% url 'images:imageset_list_url' %}?view=public"
+                           class="btn btn-outline-secondary btn-sm w-100">
                             {% trans "Публичные наборы" %}
                         </a>
                     {% endif %}
@@ -40,181 +44,186 @@
 {% endblock leftbar %}
 
 {% block content %}
-    <div class="col-md-9">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2>
-                {% if request.GET.view == 'public' %}
-                    {% trans "Публичные наборы изображений" %}
-                {% else %}
-                    {% trans "Мои наборы изображений" %}
-                {% endif %}
-            </h2>
-            <a href="{% url 'images:imageset_create_url' %}" class="btn btn-success">
-                <i class="fas fa-plus"></i> {% trans "Создать набор" %}
-            </a>
+<div class="col-md-9">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>
+            {% if request.GET.view == 'public' %}
+                {% trans "Публичные наборы изображений" %}
+            {% else %}
+                {% trans "Мои наборы изображений" %}
+            {% endif %}
+        </h2>
+        <a href="{% url 'images:imageset_create_url' %}" class="btn btn-success">
+            <i class="fas fa-plus"></i> {% trans "Создать набор" %}
+        </a>
+    </div>
+
+    {% if imagesets %}
+        <div class="row">
+        {% for imageset in imagesets %}
+        <div class="col-lg-6 col-xl-4 mb-4">
+        <div class="card h-100 shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 text-truncate" title="{{ imageset.name }}">
+                {{ imageset.name|capfirst }}
+            </h6>
+            {% if imageset.public %}
+                <span class="badge bg-success">{% trans "Публичный" %}</span>
+            {% else %}
+                <span class="badge bg-secondary">{% trans "Приватный" %}</span>
+            {% endif %}
         </div>
 
-        {% if imagesets %}
-            <div class="row">
-                {% for imageset in imagesets %}
-                    <div class="col-lg-6 col-xl-4 mb-4">
-                        <div class="card h-100 shadow-sm">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0 text-truncate" title="{{ imageset.name }}">
-                                    {{ imageset.name|capfirst }}
-                                </h6>
-                                {% if imageset.public %}
-                                    <span class="badge bg-success">{% trans "Публичный" %}</span>
-                                {% else %}
-                                    <span class="badge bg-secondary">{% trans "Приватный" %}</span>
-                                {% endif %}
-                            </div>
+        <div class="card-body">
+        <ul class="list-unstyled">
+            <li class="mb-2">
+                <i class="fas fa-user text-muted"></i>
+                <strong>{% trans "Создатель" %}:</strong> {{ imageset.user|capfirst }}
+            </li>
+            <li class="mb-2">
+                <i class="fas fa-images text-muted"></i>
+                <strong>{% trans "Всего изображений" %}:</strong> {{ imageset.total_images_count }}
+            </li>
+            <li class="mb-2">
+                <i class="fas fa-check-circle text-success"></i>
+                <strong>{% trans "Обработано" %}:</strong> {{ imageset.inferenced_images_count }}
+            </li>
+            <li class="mb-2">
+                <i class="fas fa-clock text-warning"></i>
+                <strong>{% trans "Ожидает обработки" %}:</strong> {{ imageset.not_inferenced_images_count }}
+            </li>
+        </ul>
 
-                            <div class="card-body">
-                                <ul class="list-unstyled">
-                                    <li class="mb-2">
-                                        <i class="fas fa-user text-muted"></i>
-                                        <strong>{% trans "Создатель" %}:</strong> {{ imageset.user|capfirst }}
-                                    </li>
-                                    <li class="mb-2">
-                                        <i class="fas fa-images text-muted"></i>
-                                        <strong>{% trans "Всего изображений" %}:</strong> {{ imageset.total_images_count }}
-                                    </li>
-                                    <li class="mb-2">
-                                        <i class="fas fa-check-circle text-success"></i>
-                                        <strong>{% trans "Обработано" %}:</strong> {{ imageset.inferenced_images_count }}
-                                    </li>
-                                    <li class="mb-2">
-                                        <i class="fas fa-clock text-warning"></i>
-                                        <strong>{% trans "Ожидает обработки" %}:</strong> {{ imageset.not_inferenced_images_count }}
-                                    </li>
-                                </ul>
-
-                                <!-- Прогресс-бар обработки -->
-                                {% if imageset.total_images_count > 0 %}
-                                <div class="mb-3">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <small class="text-muted">{% trans "Прогресс обработки" %}</small>
-                                        <small class="text-muted">{{ imageset.inferenced_percentage }}%</small>
-                                    </div>
-                                    <div class="progress" style="height: 6px;">
-                                        <div class="progress-bar" role="progressbar"
-                                             style="width: {{ imageset.inferenced_percentage }}%"
-                                             aria-valuenow="{{ imageset.inferenced_percentage }}"
-                                             aria-valuemin="0" aria-valuemax="100">
-                                        </div>
-                                    </div>
-                                </div>
-                                {% endif %}
-
-                                <div class="text-muted small">
-                                    <p class="mb-1">{{ imageset.description|truncatewords:10 }}</p>
-                                    <small>
-                                        <i class="fas fa-calendar"></i>
-                                        {% trans "Создан" %}: {{ imageset.created|date:"d.m.Y" }}
-                                    </small>
-                                </div>
-                            </div>
-
-                            <div class="card-footer bg-light">
-                                <div class="row g-2">
-                                    <div class="col-6">
-                                        <a href="{% url 'images:imageset_detail_url' imageset.pk %}"
-                                           class="btn btn-outline-primary btn-sm w-100">
-                                            <i class="fas fa-eye"></i>
-                                            {% trans "Просмотр" %}
-                                        </a>
-                                    </div>
-                                    <div class="col-6">
-                                        {% if imageset.total_images_count > 0 %}
-                                            <a href="{% url 'images:imagefile_list_url' imageset.pk %}"
-                                               class="btn btn-outline-success btn-sm w-100">
-                                                <i class="fas fa-list"></i>
-                                                {% trans "Изображения" %}
-                                            </a>
-                                        {% else %}
-                                            <a href="{% url 'images:upload_images_url' imageset.pk %}"
-                                               class="btn btn-outline-warning btn-sm w-100">
-                                                <i class="fas fa-upload"></i>
-                                                {% trans "Загрузить" %}
-                                            </a>
-                                        {% endif %}
-                                    </div>
-                                </div>
-
-                                <!-- Дополнительные действия для владельца -->
-                                {% if imageset.user == request.user %}
-                                <div class="row g-2 mt-1">
-                                    <div class="col-6">
-                                        <a href="{% url 'images:imageset_update_url' imageset.pk %}"
-                                           class="btn btn-outline-secondary btn-sm w-100">
-                                            <i class="fas fa-edit"></i>
-                                            {% trans "Изменить" %}
-                                        </a>
-                                    </div>
-                                    <div class="col-6">
-                                        <a href="{% url 'images:imageset_delete_url' imageset.pk %}"
-                                           class="btn btn-outline-danger btn-sm w-100"
-                                           onclick="return confirm('{% trans "Вы уверены, что хотите удалить этот набор и все изображения в нем?" %}')">
-                                            <i class="fas fa-trash"></i>
-                                            {% trans "Удалить" %}
-                                        </a>
-                                    </div>
-                                </div>
-                                {% endif %}
-                            </div>
-                        </div>
+        <!-- Прогресс-бар обработки -->
+        {% if imageset.total_images_count > 0 %}
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <small class="text-muted">{% trans "Прогресс обработки" %}</small>
+                    <small class="text-muted">{{ imageset.inferenced_percentage }}%</small>
+                </div>
+                <div class="progress" style="height: 8px;">
+                    <div class="progress-bar bg-success"
+                         role="progressbar"
+                         style="width: {{ imageset.inferenced_percentage }}%;"
+                         aria-valuenow="{{ imageset.inferenced_percentage }}"
+                         aria-valuemin="0"
+                         aria-valuemax="100">
                     </div>
-                {% endfor %}
+                </div>
             </div>
+        {% endif %}
 
-            <!-- Пагинация -->
-            {% include 'partials/_paginator.html' %}
 
-        {% else %}
-            <div class="col-12">
-                <div class="alert alert-info text-center">
-                    <h5>
-                        <i class="fas fa-info-circle"></i>
-                        {% if request.GET.view == 'public' %}
-                            {% trans "Пока нет публичных наборов изображений" %}
-                        {% else %}
-                            {% trans "У вас пока нет наборов изображений" %}
-                        {% endif %}
-                    </h5>
-                    <p class="mb-3">
-                        {% if request.GET.view == 'public' %}
-                            {% trans "Публичные наборы появятся здесь, когда пользователи поделятся своими наборами" %}
-                        {% else %}
-                            {% trans "Создайте свой первый набор изображений для начала работы с системой обнаружения объектов" %}
-                        {% endif %}
-                    </p>
-                    {% if request.GET.view != 'public' %}
-                    <a href="{% url 'images:imageset_create_url' %}" class="btn btn-success btn-lg">
-                        <i class="fas fa-plus"></i>
-                        {% trans "Создать первый набор" %}
+
+
+            <div class="text-muted small">
+            <p class="mb-1">{{ imageset.description|truncatewords:10 }}</p>
+            <small>
+                <i class="fas fa-calendar"></i>
+                {% trans "Создан" %}: {{ imageset.created|date:"d.m.Y" }}
+            </small>
+        </div>
+    </div>
+
+    <div class="card-footer bg-light">
+        <div class="row g-2">
+            <div class="col-6">
+                <a href="{% url 'images:imageset_detail_url' imageset.pk %}"
+                   class="btn btn-outline-primary btn-sm w-100">
+                    <i class="fas fa-eye"></i>
+                    {% trans "Просмотр" %}
+                </a>
+            </div>
+            <div class="col-6">
+                {% if imageset.total_images_count > 0 %}
+                    <a href="{% url 'images:imagefile_list_url' imageset.pk %}"
+                       class="btn btn-outline-success btn-sm w-100">
+                        <i class="fas fa-list"></i>
+                        {% trans "Изображения" %}
                     </a>
-                    {% endif %}
+                {% else %}
+                    <a href="{% url 'images:upload_images_url' imageset.pk %}"
+                       class="btn btn-outline-warning btn-sm w-100">
+                        <i class="fas fa-upload"></i>
+                        {% trans "Загрузить" %}
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Дополнительные действия для владельца -->
+        {% if imageset.user == request.user %}
+            <div class="row g-2 mt-1">
+                <div class="col-6">
+                    <a href="{% url 'images:imageset_update_url' imageset.pk %}"
+                       class="btn btn-outline-secondary btn-sm w-100">
+                        <i class="fas fa-edit"></i>
+                        {% trans "Изменить" %}
+                    </a>
+                </div>
+                <div class="col-6">
+                    <a href="{% url 'images:imageset_delete_url' imageset.pk %}"
+                       class="btn btn-outline-danger btn-sm w-100"
+                       onclick="return confirm('{% trans "Вы уверены, что хотите удалить этот набор и все изображения в нем?" %}')">
+                        <i class="fas fa-trash"></i>
+                        {% trans "Удалить" %}
+                    </a>
                 </div>
             </div>
         {% endif %}
     </div>
+    </div>
+    </div>
+    {% endfor %}
+    </div>
+
+    <!-- Пагинация -->
+    {% include 'partials/_paginator.html' %}
+
+    {% else %}
+    <div class="col-12">
+        <div class="alert alert-info text-center">
+            <h5>
+                <i class="fas fa-info-circle"></i>
+                {% if request.GET.view == 'public' %}
+                    {% trans "Пока нет публичных наборов изображений" %}
+                {% else %}
+                    {% trans "У вас пока нет наборов изображений" %}
+                {% endif %}
+            </h5>
+            <p class="mb-3">
+                {% if request.GET.view == 'public' %}
+                    {% trans "Публичные наборы появятся здесь, когда пользователи поделятся своими наборами" %}
+                {% else %}
+                    {% trans "Создайте свой первый набор изображений для начала работы с системой обнаружения объектов" %}
+                {% endif %}
+            </p>
+            {% if request.GET.view != 'public' %}
+                <a href="{% url 'images:imageset_create_url' %}" class="btn btn-success btn-lg">
+                    <i class="fas fa-plus"></i>
+                    {% trans "Создать первый набор" %}
+                </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
 {% endblock content %}
 
 {% block on_page_js %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Добавляем анимацию при наведении на карточки
-    const cards = document.querySelectorAll('.card');
-    cards.forEach(card => {
-        card.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-2px)';
-            this.style.transition = 'transform 0.2s ease-in-out';
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Добавляем анимацию при наведении на карточки
+            const cards = document.querySelectorAll('.card');
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', function () {
+                    this.style.transform = 'translateY(-2px)';
+                    this.style.transition = 'transform 0.2s ease-in-out';
+                });
+                card.addEventListener('mouseleave', function () {
+                    this.style.transform = 'translateY(0)';
+                });
+            });
         });
-        card.addEventListener('mouseleave', function() {
-            this.style.transform = 'translateY(0)';
-        });
-    });
-});
-</script>
+    </script>
 {% endblock on_page_js %}

@@ -37,9 +37,15 @@ urlpatterns = [
          name='batch_detection_results_url'),
 
     # ImageFile URLs
-    path('imageset/<int:imageset_id>/upload/',
-         views.ImageFileCreateView.as_view(),
+
+    path('<int:pk>/images_list/', views.ImagesListView.as_view(),
+         name='images_list_url'),
+
+    path('<int:pk>/upload_images/', views.ImagesUploadView.as_view(),
          name='upload_images_url'),
+    # path('imageset/<int:imageset_id>/upload/',
+    #      views.ImageFileCreateView.as_view(),
+    #      name='upload_images_url'),
 
     path('imageset/<int:imageset_id>/images/',
          views.ImageFileListView.as_view(),
