@@ -8,30 +8,266 @@
 {% block content %}
 <div class="col-md-12 mt-2">
     <div class="card">
-    <h4 class="card-header">{% trans "Обнаружение объектов с помощью YOLOv8" %}</h4>
-    <div class="card-body">
-        <h5 class="card-title">{% trans "Возможности приложения:" %}</h5>
+        <h4 class="card-header">
+            <i class="fas fa-search"></i>
+            {% trans "Обнаружение объектов с помощью YOLOv8" %}
+        </h4>
+        <div class="card-body">
+            <h5 class="card-title">{% trans "Возможности приложения:" %}</h5>
 
-        <ul class="list-group list-group-flush">
-            <li class="list-group-item">{% trans "Создание наборов изображений и загрузка нескольких изображений:" %}
-                <a href="{% url 'images:imageset_create_url' %}" class="btn btn-sm btn-outline-success" type="button">{% trans "Создать набор" %}</a>
-                {% if user_imagesets %}
-                <a href="{% url 'images:imageset_list_url' %}" class="btn btn-sm btn-outline-success" type="button">{% trans "Мои наборы" %}</a>
-                {% endif %}
-                {% if public_imagesets %}
-                <a href="{% url 'images:imageset_list_url' %}" class="btn btn-sm btn-outline-success" type="button">{% trans "Публичные наборы" %}</a>
-                {% endif %}
-            </li>
-            <li class="list-group-item">{% trans "Преобразование размера загруженных изображений в 640 x 640 (для более быстрого обнаружения)" %}</li>
-            <li class="list-group-item">{% trans "Загрузка собственной предобученной модели:" %}
-                <a href="{% url 'modelmanager:mlmodel_upload_url' %}" class="btn btn-sm btn-outline-success" type="button">{% trans "Загрузить модель" %}</a>
-                <a href="{% url 'modelmanager:public_mlmodel_list_url' %}" class="btn btn-sm btn-outline-success" type="button">{% trans "Список моделей" %}</a>
-            </li>
-            <li class="list-group-item">{% trans "Вы можете загрузить любую предобученную модель или модель YOLOv8." %}</li>
-            <li class="list-group-item">{% trans "Обнаружение объектов на изображениях с помощью встроенной или своей модели." %}</li>
-            <li class="list-group-item">{% trans "Ручная разметка изображений, если модель не смогла распознать объект." %}</li>
-        </ul>
-    </div>
+            <div class="row">
+                <!-- Управление наборами изображений -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="mb-0">
+                                <i class="fas fa-images"></i>
+                                {% trans "Управление изображениями" %}
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <i class="fas fa-plus text-success"></i>
+                                    {% trans "Создание наборов изображений и загрузка нескольких изображений" %}
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-compress-arrows-alt text-info"></i>
+                                    {% trans "Автоматическое изменение размера до 640x640 пикселей" %}
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-eye text-warning"></i>
+                                    {% trans "Превью и управление загруженными изображениями" %}
+                                </li>
+                            </ul>
+
+                            <div class="btn-group-vertical w-100">
+                                <a href="{% url 'images:imageset_create_url' %}"
+                                   class="btn btn-success btn-sm mb-2">
+                                    <i class="fas fa-plus"></i>
+                                    {% trans "Создать новый набор" %}
+                                </a>
+
+                                {% if user_imagesets %}
+                                <a href="{% url 'images:imageset_list_url' %}?view=user"
+                                   class="btn btn-outline-primary btn-sm mb-2">
+                                    <i class="fas fa-user"></i>
+                                    {% trans "Мои наборы" %} ({{ user_imagesets.count }})
+                                </a>
+                                {% endif %}
+
+                                {% if public_imagesets %}
+                                <a href="{% url 'images:imageset_list_url' %}?view=public"
+                                   class="btn btn-outline-info btn-sm">
+                                    <i class="fas fa-globe"></i>
+                                    {% trans "Публичные наборы" %} ({{ public_imagesets.count }})
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Обнаружение объектов -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0">
+                                <i class="fas fa-magic"></i>
+                                {% trans "Обнаружение объектов" %}
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <i class="fas fa-robot text-primary"></i>
+                                    {% trans "Автоматическое обнаружение с помощью YOLO и кастомных моделей" %}
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-bolt text-warning"></i>
+                                    <strong>{% trans "Пакетное распознавание" %}</strong>
+                                    {% trans "- обработка всего набора одним кликом" %}
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-hand-pointer text-info"></i>
+                                    {% trans "Ручная разметка для улучшения результатов" %}
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-filter text-secondary"></i>
+                                    {% trans "Показ только изображений с найденными объектами" %}
+                                </li>
+                            </ul>
+
+                            <div class="alert alert-light">
+                                <small>
+                                    <i class="fas fa-lightbulb text-warning"></i>
+                                    <strong>{% trans "Новая функция!" %}</strong>
+                                    {% trans "Пакетное распознавание позволяет обработать сразу весь набор изображений и показывает только те, на которых найдены объекты." %}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Управление моделями -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-warning text-dark">
+                            <h6 class="mb-0">
+                                <i class="fas fa-brain"></i>
+                                {% trans "Модели машинного обучения" %}
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <i class="fas fa-download text-primary"></i>
+                                    {% trans "Встроенные модели YOLOv8 (nano, small, medium, large, xlarge)" %}
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-upload text-success"></i>
+                                    {% trans "Загрузка собственных предобученных моделей" %}
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-chart-line text-info"></i>
+                                    {% trans "Статистика обучения и производительности моделей" %}
+                                </li>
+                            </ul>
+
+                            <div class="btn-group-vertical w-100">
+                                <a href="{% url 'modelmanager:mlmodel_upload_url' %}"
+                                   class="btn btn-warning btn-sm mb-2">
+                                    <i class="fas fa-upload"></i>
+                                    {% trans "Загрузить модель" %}
+                                </a>
+                                <a href="{% url 'modelmanager:public_mlmodel_list_url' %}"
+                                   class="btn btn-outline-secondary btn-sm mb-2">
+                                    <i class="fas fa-list"></i>
+                                    {% trans "Все модели" %}
+                                </a>
+                                <a href="{% url 'modelmanager:user_mlmodel_list_url' %}"
+                                   class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-user-cog"></i>
+                                    {% trans "Мои модели" %}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Дополнительные возможности -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="mb-0">
+                                <i class="fas fa-tools"></i>
+                                {% trans "Дополнительные возможности" %}
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <i class="fas fa-trash text-danger"></i>
+                                    <strong>{% trans "Управление наборами" %}</strong>
+                                    {% trans "- возможность удаления целых наборов" %}
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-copy text-secondary"></i>
+                                    {% trans "Автоматическое обнаружение дубликатов изображений" %}
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-language text-primary"></i>
+                                    {% trans "Поддержка русского и английского языков" %}
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-mobile-alt text-success"></i>
+                                    {% trans "Адаптивный интерфейс для мобильных устройств" %}
+                                </li>
+                            </ul>
+
+                            <div class="alert alert-light">
+                                <small>
+                                    <i class="fas fa-info-circle text-info"></i>
+                                    {% trans "Все операции с изображениями и результатами обнаружения выполняются безопасно с подтверждением действий." %}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Быстрый старт -->
+            {% if not user_imagesets %}
+            <div class="card mt-4 border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-rocket"></i>
+                        {% trans "Быстрый старт" %}
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <p class="mb-2">{% trans "Начните работу с системой обнаружения объектов:" %}</p>
+                            <ol class="mb-0">
+                                <li>{% trans "Создайте новый набор изображений" %}</li>
+                                <li>{% trans "Загрузите изображения для анализа" %}</li>
+                                <li>{% trans "Запустите пакетное распознавание объектов" %}</li>
+                                <li>{% trans "Просмотрите результаты и при необходимости добавьте ручные аннотации" %}</li>
+                            </ol>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <a href="{% url 'images:imageset_create_url' %}"
+                               class="btn btn-primary btn-lg">
+                                <i class="fas fa-play"></i>
+                                {% trans "Начать работу" %}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Статистика пользователя -->
+            {% if user_imagesets and user_stats %}
+            <div class="card mt-4 border-success">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-chart-bar"></i>
+                        {% trans "Ваша статистика" %}
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <h4 class="text-primary mb-1">{{ user_stats.total_imagesets }}</h4>
+                                <small class="text-muted">{% trans "Наборов создано" %}</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <h4 class="text-success mb-1">{{ user_stats.total_images }}</h4>
+                                <small class="text-muted">{% trans "Всего изображений" %}</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <h4 class="text-warning mb-1">{{ user_stats.processed_images }}</h4>
+                                <small class="text-muted">{% trans "Обработано" %}</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <h4 class="text-info mb-1">{{ user_stats.public_imagesets }}</h4>
+                                <small class="text-muted">{% trans "Публичных наборов" %}</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
     </div>
 </div>  
 {% endblock content %}

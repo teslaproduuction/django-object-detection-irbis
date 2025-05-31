@@ -1,114 +1,248 @@
 import os
 import hashlib
-from PIL import Image as I
+from PIL import Image
 
 from django.db import models
 from django.conf import settings
-from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
+from django.urls import reverse
+from django.core.files.storage import default_storage
+
 from config.models import CreationModificationDateBase
 
 
+def imageset_upload_images_path(instance, filename):
+    """Путь для сохранения изображений в наборе (старая функция для совместимости с миграциями)."""
+    return f'imagesets/{instance.image_set.user.username}/{instance.image_set.name}/{filename}'
+
+
+def imageset_directory_path(instance, filename):
+    """Путь для сохранения изображений в наборе."""
+    return f'imagesets/{instance.image_set.user.username}/{instance.image_set.name}/{filename}'
+
+
+def resize_image(image_path, size=(640, 640)):
+    """Изменяет размер изображения до указанного размера."""
+    try:
+        with Image.open(image_path) as img:
+            # Конвертируем в RGB если необходимо
+            if img.mode in ('RGBA', 'LA', 'P'):
+                img = img.convert('RGB')
+
+            # Изменяем размер с сохранением пропорций
+            img.thumbnail(size, Image.Resampling.LANCZOS)
+
+            # Создаем новое изображение с белым фоном
+            new_img = Image.new('RGB', size, (255, 255, 255))
+
+            # Вставляем изображение по центру
+            x = (size[0] - img.size[0]) // 2
+            y = (size[1] - img.size[1]) // 2
+            new_img.paste(img, (x, y))
+
+            # Сохраняем
+            new_img.save(image_path, format='JPEG', quality=90)
+
+    except Exception as e:
+        print(f"Ошибка при изменении размера изображения: {e}")
+
+
+def calculate_image_hash(image_path):
+    """Вычисляет хэш изображения для поиска дубликатов."""
+    try:
+        hasher = hashlib.md5()
+        with open(image_path, 'rb') as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hasher.update(chunk)
+        return hasher.hexdigest()
+    except Exception as e:
+        print(f"Ошибка при вычислении хэша: {e}")
+        return None
+
+
 class ImageSet(CreationModificationDateBase):
-    name = models.CharField(max_length=100,
-                            help_text="eg. Delhi-trip, Tajmahal, flowers"
-                            )
-    description = models.TextField()
-    user = models.ForeignKey(settings.AUTH_USER_MODEL,
-                             related_name='imagesets',
-                             on_delete=models.CASCADE
-                             )
-    dirpath = models.CharField(max_length=150, null=True, blank=True)
-    public = models.BooleanField(default=False)
+    """Модель набора изображений."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='imagesets',
+        verbose_name=_('Пользователь')
+    )
+
+    name = models.CharField(
+        max_length=100,
+        verbose_name=_('Название'),
+        help_text=_('Название набора изображений')
+    )
+
+    description = models.TextField(
+        blank=True,
+        verbose_name=_('Описание'),
+        help_text=_('Описание набора изображений')
+    )
+
+    public = models.BooleanField(
+        default=False,
+        verbose_name=_('Публичный'),
+        help_text=_('Сделать набор доступным для всех пользователей')
+    )
 
     class Meta:
-        constraints = [models.UniqueConstraint(
-            fields=['user', 'name'],
-            name='unique_imageset_by_user')]
+        verbose_name = _('Набор изображений')
+        verbose_name_plural = _('Наборы изображений')
+        ordering = ['-created']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'name'],
+                name='unique_imageset_per_user'
+            )
+        ]
 
     def __str__(self):
-        return f'{self.name.capitalize()}'
-
-    def get_dirpath(self):
-        return os.path.join(self.user.username, self.name)
+        return f"{self.name} ({self.user.username})"
 
     def get_absolute_url(self):
-        return reverse("images:imageset_detail_url", kwargs={"pk": self.pk})
+        return reverse('images:imageset_detail_url', kwargs={'pk': self.pk})
+
+    @property
+    def total_images(self):
+        """Общее количество изображений в наборе."""
+        return self.images.count()
+
+    @property
+    def processed_images(self):
+        """Количество обработанных изображений."""
+        return self.images.filter(is_inferenced=True).count()
+
+    @property
+    def unprocessed_images(self):
+        """Количество необработанных изображений."""
+        return self.images.filter(is_inferenced=False).count()
+
+    @property
+    def images_with_objects(self):
+        """Количество изображений с найденными объектами."""
+        return self.images.filter(detectedimages__isnull=False).distinct().count()
 
 
-def imageset_upload_images_path(instance, filename):
-    return f'{instance.image_set.dirpath}/images/{filename}'
+class ImageFile(CreationModificationDateBase):
+    """Модель файла изображения."""
 
+    image_set = models.ForeignKey(
+        ImageSet,
+        on_delete=models.CASCADE,
+        related_name='images',
+        verbose_name=_('Набор изображений')
+    )
 
-class ImageFile(models.Model):
-    name = models.CharField(_('Image Name'), max_length=150, null=True)
-    image_set = models.ForeignKey('images.ImageSet',
-                                  related_name="images",
-                                  on_delete=models.CASCADE,
-                                  help_text="Image Set of the uploading images"
-                                  )
-    image = models.ImageField(upload_to=imageset_upload_images_path)
+    image = models.ImageField(
+        upload_to=imageset_directory_path,
+        verbose_name=_('Изображение'),
+        help_text=_('Файл изображения')
+    )
 
-    is_inferenced = models.BooleanField(default=False)
+    name = models.CharField(
+        max_length=255,
+        verbose_name=_('Image Name'),
+        help_text=_('Название файла изображения')
+    )
 
-    # Add a field to store image hash
-    image_hash = models.CharField(max_length=64, blank=True, null=True, db_index=True)
+    is_inferenced = models.BooleanField(
+        default=False,
+        verbose_name=_('Обработано'),
+        help_text=_('Было ли изображение обработано моделью')
+    )
+
+    image_hash = models.CharField(
+        max_length=32,
+        blank=True,
+        null=True,
+        verbose_name=_('Хэш изображения'),
+        help_text=_('MD5 хэш для поиска дубликатов'),
+        db_index=True
+    )
+
+    class Meta:
+        verbose_name = _('Изображение')
+        verbose_name_plural = _('Изображения')
+        ordering = ['-created']
 
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.image_set.name})"
+
+    def save(self, *args, **kwargs):
+        """Переопределяем save для обработки изображения."""
+        # Устанавливаем имя файла если не задано
+        if not self.name and self.image:
+            self.name = os.path.basename(self.image.name)
+
+        # Сохраняем объект
+        super().save(*args, **kwargs)
+
+        # Обрабатываем изображение после сохранения
+        if self.image:
+            image_path = self.image.path
+
+            # Изменяем размер изображения
+            resize_image(image_path, size=(640, 640))
+
+            # Вычисляем хэш изображения
+            if not self.image_hash:
+                self.image_hash = calculate_image_hash(image_path)
+                # Сохраняем без вызова save() чтобы избежать рекурсии
+                ImageFile.objects.filter(pk=self.pk).update(image_hash=self.image_hash)
+
+    def delete(self, *args, **kwargs):
+        """Переопределяем delete для удаления файла."""
+        # Удаляем файл изображения
+        if self.image:
+            if default_storage.exists(self.image.name):
+                default_storage.delete(self.image.name)
+
+        super().delete(*args, **kwargs)
+
+    def get_absolute_url(self):
+        return reverse('detectobj:detection_image_detail_url', kwargs={'pk': self.pk})
 
     @property
     def get_imageurl(self):
-        return self.image.url
+        """Возвращает URL изображения."""
+        if self.image:
+            return self.image.url
+        return None
 
     @property
     def get_imagepath(self):
-        return self.image.path
+        """Возвращает путь к файлу изображения."""
+        if self.image:
+            return self.image.path
+        return None
 
-    @property
-    def get_filename(self):
-        return os.path.split(self.image.url)[-1]
-
-    @property
     def get_imgshape(self):
-        im = I.open(self.get_imagepath)
-        return im.size
+        """Возвращает размеры изображения."""
+        try:
+            if self.image:
+                with Image.open(self.image.path) as img:
+                    return f"{img.width}x{img.height}"
+        except Exception:
+            pass
+        return "Unknown"
 
-    def get_delete_url(self):
-        return reverse("images:images_list_url", kwargs={"pk": self.image_set.id})
+    @property
+    def has_detections(self):
+        """Проверяет, есть ли у изображения детекции."""
+        return self.detectedimages.exists()
 
-    def save(self, *args, **kwargs):
-        # Generate hash for the image if not already set
-        if not self.image_hash and self.image:
-            try:
-                with open(self.image.path, 'rb') as f:
-                    file_hash = hashlib.sha256()
-                    for chunk in iter(lambda: f.read(4096), b''):
-                        file_hash.update(chunk)
-                    self.image_hash = file_hash.hexdigest()
-            except Exception as e:
-                # If image file doesn't exist yet, we'll generate the hash after it's saved
-                print(f"Unable to generate image hash: {e}")
+    @property
+    def has_manual_annotations(self):
+        """Проверяет, есть ли у изображения ручные аннотации."""
+        return self.manual_annotations.exists()
 
-        # Call the parent class save method
-        super().save(*args, **kwargs)
-
-        # If hash wasn't generated before saving and the image file now exists, generate it
-        if not self.image_hash and self.image:
-            try:
-                with open(self.get_imagepath, 'rb') as f:
-                    file_hash = hashlib.sha256()
-                    for chunk in iter(lambda: f.read(4096), b''):
-                        file_hash.update(chunk)
-                    self.image_hash = file_hash.hexdigest()
-                # Save again to store the hash, but avoid recursion
-                ImageFile.objects.filter(pk=self.pk).update(image_hash=self.image_hash)
-            except Exception as e:
-                print(f"Unable to generate image hash after save: {e}")
-
-        # Convert image to 640px before saving.
-        img = I.open(self.get_imagepath)
-        if img.height > 640 or img.width > 640:
-            output_size = (640, 640)
-            img.thumbnail(output_size)
-            img.save(self.get_imagepath)
+    def find_duplicates(self):
+        """Находит дубликаты изображения по хэшу."""
+        if self.image_hash:
+            return ImageFile.objects.filter(
+                image_hash=self.image_hash
+            ).exclude(pk=self.pk)
+        return ImageFile.objects.none()

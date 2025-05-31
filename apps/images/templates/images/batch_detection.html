@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+    {% trans "Пакетное распознавание" %} - {{ imageset.name }}
+{% endblock title %}
+
+{% block leftbar %}
+<div class="col-sm-3">
+    <div class="card">
+        <div class="card-header">
+            {% trans "Информация о наборе" %}
+        </div>
+        <div class="card-body">
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item">
+                    <strong>{% trans "Название" %}:</strong> {{ imageset.name }}
+                </li>
+                <li class="list-group-item">
+                    <strong>{% trans "Всего изображений" %}:</strong> {{ total_images }}
+                </li>
+                <li class="list-group-item">
+                    <strong>{% trans "Обработано ранее" %}:</strong> {{ processed_images }}
+                </li>
+                <li class="list-group-item">
+                    <strong>{% trans "Не обработано" %}:</strong> {{ unprocessed_images }}
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header">
+            {% trans "Как это работает" %}
+        </div>
+        <div class="card-body">
+            <ol class="small">
+                <li>{% trans "Выберите тип модели и настройки" %}</li>
+                <li>{% trans "Нажмите 'Запустить распознавание'" %}</li>
+                <li>{% trans "Система обработает все изображения" %}</li>
+                <li>{% trans "Будут показаны только изображения с найденными объектами" %}</li>
+            </ol>
+        </div>
+    </div>
+</div>
+{% endblock leftbar %}
+
+{% block content %}
+<div class="col-sm-9">
+    <div class="card">
+        <div class="card-header">
+            <h4>
+                <i class="fas fa-magic"></i>
+                {% trans "Пакетное распознавание объектов" %}
+            </h4>
+        </div>
+        <div class="card-body">
+            {% if total_images == 0 %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    {% trans "В наборе нет изображений для обработки." %}
+                    <a href="{% url 'images:upload_images_url' imageset.id %}" class="btn btn-primary btn-sm ms-2">
+                        {% trans "Загрузить изображения" %}
+                    </a>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <h5 class="alert-heading">
+                        <i class="fas fa-info-circle"></i>
+                        {% trans "Информация о пакетной обработке" %}
+                    </h5>
+                    <p>
+                        {% trans "Будет обработано" %} <strong>{{ total_images }}</strong> {% trans "изображений" %}.
+                        {% if processed_images > 0 %}
+                            {% trans "Из них" %} <strong>{{ processed_images }}</strong> {% trans "уже были обработаны ранее и будут перезаписаны" %}.
+                        {% endif %}
+                    </p>
+                    <hr>
+                    <p class="mb-0">
+                        <small>
+                            <i class="fas fa-clock"></i>
+                            {% trans "Время обработки зависит от количества изображений и выбранной модели" %}.
+                            {% trans "Обработка может занять несколько минут" %}.
+                        </small>
+                    </p>
+                </div>
+
+                <form method="post" id="batchDetectionForm">
+                    {% csrf_token %}
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    {% trans "Выбор модели" %}
+                                </div>
+                                <div class="card-body">
+                                    {{ form.model_type|as_crispy_field }}
+
+                                    <div id="yolo-options" style="display: none;">
+                                        {{ form.yolo_model|as_crispy_field }}
+                                    </div>
+
+                                    <div id="custom-options" style="display: none;">
+                                        {{ form.custom_model|as_crispy_field }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    {% trans "Настройки распознавания" %}
+                                </div>
+                                <div class="card-body">
+                                    {{ form.model_conf|as_crispy_field }}
+
+                                    <div class="alert alert-light">
+                                        <small>
+                                            <i class="fas fa-lightbulb"></i>
+                                            {% trans "Рекомендации" %}:
+                                            <ul class="mt-2 mb-0">
+                                                <li>{% trans "Низкий порог (0.25-0.4): больше объектов, но больше ложных срабатываний" %}</li>
+                                                <li>{% trans "Высокий порог (0.6-0.8): меньше объектов, но выше точность" %}</li>
+                                            </ul>
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 d-flex justify-content-between">
+                        <a href="{% url 'images:imageset_detail_url' imageset.id %}"
+                           class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i>
+                            {% trans "Назад к набору" %}
+                        </a>
+
+                        <button type="submit" class="btn btn-primary btn-lg" id="startBatchBtn">
+                            <i class="fas fa-play"></i>
+                            {% trans "Запустить пакетное распознавание" %}
+                        </button>
+                    </div>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block on_page_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modelTypeRadios = document.querySelectorAll('input[name="model_type"]');
+    const yoloOptions = document.getElementById('yolo-options');
+    const customOptions = document.getElementById('custom-options');
+    const form = document.getElementById('batchDetectionForm');
+    const startBtn = document.getElementById('startBatchBtn');
+
+    function toggleModelOptions() {
+        const selectedType = document.querySelector('input[name="model_type"]:checked').value;
+
+        if (selectedType === 'yolo') {
+            yoloOptions.style.display = 'block';
+            customOptions.style.display = 'none';
+            // Делаем YOLO поля обязательными
+            document.querySelector('select[name="yolo_model"]').required = true;
+            document.querySelector('select[name="custom_model"]').required = false;
+        } else {
+            yoloOptions.style.display = 'none';
+            customOptions.style.display = 'block';
+            // Делаем кастомные поля обязательными
+            document.querySelector('select[name="yolo_model"]').required = false;
+            document.querySelector('select[name="custom_model"]').required = true;
+        }
+    }
+
+    // Инициализация
+    toggleModelOptions();
+
+    // Обработчики событий
+    modelTypeRadios.forEach(radio => {
+        radio.addEventListener('change', toggleModelOptions);
+    });
+
+    // Обработка отправки формы
+    form.addEventListener('submit', function(e) {
+        // Показываем индикатор загрузки
+        startBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {% trans "Обработка..." %}';
+        startBtn.disabled = true;
+
+        // Показываем предупреждение
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-warning mt-3';
+        alert.innerHTML = `
+            <i class="fas fa-clock"></i>
+            {% trans "Пакетное распознавание запущено. Это может занять несколько минут..." %}
+            <div class="progress mt-2">
+                <div class="progress-bar progress-bar-striped progress-bar-animated"
+                     role="progressbar" style="width: 100%"></div>
+            </div>
+        `;
+        form.appendChild(alert);
+    });
+});
+</script>
+{% endblock on_page_js %}

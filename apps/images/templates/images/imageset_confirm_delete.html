@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}
+    {% trans "Подтверждение удаления" %} - {{ imageset.name }}
+{% endblock title %}
+
+{% block leftbar %}
+<div class="col-sm-3">
+    <div class="card">
+        <div class="card-header">
+            {% trans "Информация о наборе" %}
+        </div>
+        <div class="card-body">
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item">
+                    <strong>{% trans "Название" %}:</strong> {{ imageset.name }}
+                </li>
+                <li class="list-group-item">
+                    <strong>{% trans "Количество изображений" %}:</strong> {{ imageset.images.count }}
+                </li>
+                <li class="list-group-item">
+                    <strong>{% trans "Создано" %}:</strong> {{ imageset.created|date:"d.m.Y H:i" }}
+                </li>
+                <li class="list-group-item">
+                    <strong>{% trans "Публичный" %}:</strong> 
+                    {% if imageset.public %}
+                        {% trans "Да" %}
+                    {% else %}
+                        {% trans "Нет" %}
+                    {% endif %}
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock leftbar %}
+
+{% block content %}
+<div class="col-sm-9">
+    <div class="card border-danger">
+        <div class="card-header bg-danger text-white">
+            <h4 class="mb-0">
+                <i class="fas fa-exclamation-triangle"></i>
+                {% trans "Подтверждение удаления набора изображений" %}
+            </h4>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-danger" role="alert">
+                <h5 class="alert-heading">{% trans "Внимание! Это действие необратимо!" %}</h5>
+                <p>
+                    {% trans "Вы собираетесь удалить набор изображений" %} 
+                    <strong>"{{ imageset.name }}"</strong>.
+                </p>
+                <hr>
+                <p class="mb-0">
+                    {% trans "При удалении набора будут также удалены:" %}
+                </p>
+                <ul class="mt-2">
+                    <li>{% trans "Все изображения в наборе" %} ({{ imageset.images.count }} {% trans "изображений" %})</li>
+                    <li>{% trans "Все результаты обнаружения объектов" %}</li>
+                    <li>{% trans "Все ручные аннотации" %}</li>
+                    <li>{% trans "Все связанные файлы на сервере" %}</li>
+                </ul>
+            </div>
+
+            {% if imageset.images.count > 0 %}
+            <div class="row mb-3">
+                <div class="col-12">
+                    <h6>{% trans "Превью изображений, которые будут удалены:" %}</h6>
+                    <div class="d-flex flex-wrap">
+                        {% for image in imageset.images.all|slice:":10" %}
+                            <div class="me-2 mb-2">
+                                <img src="{{ image.get_imageurl }}" 
+                                     class="img-thumbnail" 
+                                     style="width: 80px; height: 80px; object-fit: cover;"
+                                     alt="{{ image.name }}">
+                            </div>
+                        {% endfor %}
+                        {% if imageset.images.count > 10 %}
+                            <div class="d-flex align-items-center ms-2">
+                                <span class="text-muted">
+                                    {% trans "и еще" %} {{ imageset.images.count|add:"-10" }} {% trans "изображений" %}...
+                                </span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="d-flex justify-content-between">
+                    <a href="{% url 'images:imageset_detail_url' imageset.id %}" 
+                       class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i>
+                        {% trans "Отмена" %}
+                    </a>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i>
+                        {% trans "Да, удалить набор и все изображения" %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock content %}

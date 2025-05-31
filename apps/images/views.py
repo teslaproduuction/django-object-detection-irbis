@@ -1,140 +1,437 @@
-from django.shortcuts import get_object_or_404, render
-from django.urls import reverse_lazy, reverse
-from django.views.generic import CreateView, ListView, DetailView, DeleteView, UpdateView
-from django.views.generic import View
-from django.http import HttpResponseRedirect, JsonResponse
+import os
+import io
+from PIL import Image as I
+import torch
+from ultralytics import YOLO
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views.generic.detail import DetailView
+from django.views.generic.edit import CreateView, UpdateView, DeleteView
+from django.views.generic.list import ListView
+from django.views.generic import FormView, TemplateView
+from django.urls import reverse_lazy, reverse
+from django.http import Http404, JsonResponse
+from django.db import models
+from django.conf import settings
+from django import forms
+from django.utils.translation import gettext_lazy as _
+from django.core.paginator import Paginator
 
 from .models import ImageSet, ImageFile
-from django.http import HttpResponse
-from django.utils.translation import get_language
-
-def debug_language(request):
-    return HttpResponse(f"Current language: {get_language()}")
-
-class ImageSetCreateView(LoginRequiredMixin, CreateView):
-    model = ImageSet
-    fields = ['name', 'description', 'public']
-
-    def form_valid(self, form):
-        if not ImageSet.objects.filter(name=form.instance.name).exists():
-            form.instance.user = self.request.user
-            form.instance.dirpath = form.instance.get_dirpath()
-            return super().form_valid(form)
-        else:
-            form.add_error(
-                'name',
-                f"Imageset with name {form.cleaned_data['name']} already exists in dataset. \
-                     Add more images to that imageset, if required."
-            )
-            return HttpResponseRedirect(reverse('images:imageset_create_url'))
-
-
-class ImageSetUpdateView(LoginRequiredMixin, UpdateView):
-    model = ImageSet
-    fields = ['name', 'description', 'public']
-
-    def form_valid(self, form):
-        if not ImageSet.objects.filter(name=form.instance.name).exists():
-            return super().form_valid(form)
-        print("entered in else")
-        form.add_error(
-            'name',
-            f"Imageset with name {form.cleaned_data['name']} already exists in dataset. \
-                     Add more images to that imageset, if required."
-        )
-        context = {
-            'form': form
-        }
-        return render(self.request, 'images/imageset_form.html', context)
-
-    def get_success_url(self):
-        return reverse('images:imageset_detail_url', kwargs={'pk': self.object.id})
+from detectobj.models import InferencedImage
+from modelmanager.models import MLModel
 
 
 class ImageSetListView(LoginRequiredMixin, ListView):
     model = ImageSet
-    context_object_name = 'imagesets'
-    paginate_by: int = 10
+    template_name = "images/imageset_list.html"
+    context_object_name = "user_imagesets"
 
     def get_queryset(self):
-        return super().get_queryset().filter(user=self.request.user)
+        return super().get_queryset().filter(user=self.request.user).order_by('-created')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        public_imagesets = ImageSet.objects.filter(
+        context['public_imagesets'] = ImageSet.objects.filter(
             public=True).order_by('-created')
-        user_imagesets = ImageSet.objects.filter(
-            user=self.request.user).order_by('-created')
-        context["public_imagesets"] = public_imagesets
-        context["user_imagesets"] = user_imagesets
         return context
 
 
 class ImageSetDetailView(LoginRequiredMixin, DetailView):
     model = ImageSet
+    template_name = "images/imageset_detail.html"
+
+
+class ImageSetCreateView(LoginRequiredMixin, CreateView):
+    model = ImageSet
+    fields = ["name", "description", "public"]
+    template_name = "images/imageset_form.html"
+
+    def form_valid(self, form):
+        form.instance.user = self.request.user
+        return super().form_valid(form)
+
+
+class ImageSetUpdateView(LoginRequiredMixin, UpdateView):
+    model = ImageSet
+    fields = ["name", "description", "public"]
+    template_name = "images/imageset_form.html"
+
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset)
+        if obj.user != self.request.user and not self.request.user.is_superuser:
+            raise Http404("You can only edit your own imagesets")
+        return obj
+
+
+class ImageSetDeleteView(LoginRequiredMixin, DeleteView):
+    """View для удаления набора изображений."""
+    model = ImageSet
+    template_name = 'images/imageset_confirm_delete.html'
+    success_url = reverse_lazy('images:imageset_list_url')
     context_object_name = 'imageset'
 
+    def get_object(self, queryset=None):
+        """Ограничиваем удаление только для владельца набора."""
+        obj = super().get_object(queryset)
+        if obj.user != self.request.user and not self.request.user.is_superuser:
+            raise Http404("Вы можете удалять только свои наборы изображений")
+        return obj
 
-class ImagesUploadView(LoginRequiredMixin, View):
-    def get(self, request, *args, **kwargs):
-        imageset_id = self.kwargs.get("pk")
-        imageset = get_object_or_404(ImageSet, id=imageset_id)
-        context = {
-            'imageset': imageset,
-        }
-        return render(request, 'images/imagefile_form.html', context)
+    def delete(self, request, *args, **kwargs):
+        """Переопределяем метод delete для добавления сообщения об успешном удалении."""
+        imageset = self.get_object()
+        imageset_name = imageset.name
+        response = super().delete(request, *args, **kwargs)
 
-    def post(self, request, *args, **kwargs):
-        imageset_id = self.kwargs.get("pk")
-        imageset = get_object_or_404(ImageSet, id=imageset_id)
-        if self.request.method == 'POST':
-            images = [
-                self.request.FILES.get("file[%d]" % i)
-                for i in range(len(self.request.FILES))
-            ]
-            for img in images:
-                if not ImageFile.objects.filter(name=img.name, image_set=imageset).exists():
-                    ImageFile.objects.create(
-                        name=img.name, image=img, image_set=imageset)
-
-                else:
-                    print(f"Image {img.name} already exists in the imageset.")
-
-            message = f"Uploading images to the Imageset: {imageset}. \
-                Automatic redirect to the images list after completion."
-
-            redirect_to = reverse_lazy(
-                "images:images_list_url", args=[imageset.id])
-            return JsonResponse({"result": "result",
-                                "message": message,
-                                 "redirect_to": redirect_to,
-                                 "files_length": len(images),
-                                 },
-                                status=200,
-                                content_type="application/json"
-                                )
+        messages.success(
+            request,
+            f'Набор изображений "{imageset_name}" и все связанные изображения успешно удалены.'
+        )
+        return response
 
 
-class ImagesListView(LoginRequiredMixin, ListView):
+class ImageFileCreateView(LoginRequiredMixin, CreateView):
     model = ImageFile
-    context_object_name = 'images'
+    fields = ["image"]
+    template_name = "images/imagefile_form.html"
 
-    def get_queryset(self):
-        imageset_id = self.kwargs.get('pk')
-        return super().get_queryset().filter(image_set__id=imageset_id)
+    def dispatch(self, request, *args, **kwargs):
+        self.imageset = get_object_or_404(ImageSet, id=self.kwargs['imageset_id'])
+        return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        form.instance.image_set = self.imageset
+        return super().form_valid(form)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        imageset_id = self.kwargs.get('pk')
-        imageset = get_object_or_404(ImageSet, id=imageset_id)
-        context["imageset"] = imageset
+        context['imageset'] = self.imageset
+        return context
+
+    def get_success_url(self):
+        return reverse('images:imageset_detail_url', kwargs={'pk': self.imageset.id})
+
+
+class ImageFileListView(LoginRequiredMixin, ListView):
+    model = ImageFile
+    template_name = "images/imagefile_list.html"
+    context_object_name = "images"
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        self.imageset = get_object_or_404(ImageSet, id=self.kwargs['imageset_id'])
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        return self.imageset.images.all().order_by('-created')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['imageset'] = self.imageset
         return context
 
 
-class ImagesDeleteUrl(LoginRequiredMixin, DeleteView):
+class ImageFileDeleteView(LoginRequiredMixin, DeleteView):
     model = ImageFile
+    template_name = "images/imagefile_confirm_delete.html"
+
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset)
+        if obj.image_set.user != self.request.user and not self.request.user.is_superuser:
+            raise Http404("You can only delete images from your own imagesets")
+        return obj
 
     def get_success_url(self):
-        qs = self.get_object()
-        return qs.get_delete_url()
+        return reverse('images:imagefile_list_url', kwargs={'imageset_id': self.object.image_set.id})
+
+
+class BatchDetectionForm(forms.Form):
+    """Форма для выбора модели для пакетного распознавания."""
+
+    MODEL_TYPE_CHOICES = [
+        ('yolo', _('Модель YOLO')),
+        ('custom', _('Кастомная модель')),
+    ]
+
+    model_type = forms.ChoiceField(
+        choices=MODEL_TYPE_CHOICES,
+        widget=forms.RadioSelect,
+        label=_('Тип модели'),
+        initial='yolo'
+    )
+
+    yolo_model = forms.ChoiceField(
+        choices=InferencedImage.YOLOMODEL_CHOICES,
+        label=_('YOLO модель'),
+        required=False,
+        initial=InferencedImage.YOLOMODEL_CHOICES[0][0]
+    )
+
+    custom_model = forms.ModelChoiceField(
+        queryset=MLModel.objects.none(),
+        label=_('Кастомная модель'),
+        required=False,
+        empty_label=_('Выберите модель')
+    )
+
+    model_conf = forms.DecimalField(
+        label=_("Порог уверенности модели"),
+        max_value=1,
+        min_value=0.25,
+        max_digits=3,
+        decimal_places=2,
+        initial=0.45,
+        help_text=_("Порог уверенности модели для предсказаний."),
+    )
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        if user:
+            # Показываем модели пользователя и публичные модели
+            self.fields['custom_model'].queryset = MLModel.objects.filter(
+                models.Q(uploader=user) | models.Q(public=True)
+            ).order_by('name')
+
+
+class BatchDetectionView(LoginRequiredMixin, FormView):
+    """View для пакетного распознавания изображений в наборе."""
+
+    template_name = 'images/batch_detection.html'
+    form_class = BatchDetectionForm
+
+    def dispatch(self, request, *args, **kwargs):
+        self.imageset = get_object_or_404(ImageSet, id=self.kwargs['pk'])
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['imageset'] = self.imageset
+        context['total_images'] = self.imageset.images.count()
+
+        # Получаем статистику предыдущих обработок
+        processed_images = InferencedImage.objects.filter(
+            orig_image__image_set=self.imageset
+        ).values('orig_image').distinct().count()
+
+        context['processed_images'] = processed_images
+        context['unprocessed_images'] = context['total_images'] - processed_images
+
+        return context
+
+    def form_valid(self, form):
+        """Обработка формы и запуск пакетного распознавания."""
+        model_type = form.cleaned_data['model_type']
+        model_conf = float(form.cleaned_data['model_conf'])
+
+        # Определяем какую модель использовать
+        if model_type == 'yolo':
+            yolo_model_name = form.cleaned_data['yolo_model']
+            custom_model = None
+        else:
+            custom_model = form.cleaned_data['custom_model']
+            yolo_model_name = None
+
+        if not yolo_model_name and not custom_model:
+            form.add_error('custom_model', _('Выберите модель для распознавания'))
+            return self.form_invalid(form)
+
+        # Запускаем пакетное распознавание
+        results = self.process_batch_detection(
+            yolo_model_name, custom_model, model_conf
+        )
+
+        # Сохраняем результаты в сессии для отображения
+        self.request.session['batch_results'] = {
+            'imageset_id': self.imageset.id,
+            'processed_count': results['processed_count'],
+            'detected_count': results['detected_count'],
+            'detected_images': results['detected_images'],
+            'model_type': model_type,
+            'model_name': yolo_model_name or custom_model.name,
+            'model_conf': model_conf,
+        }
+
+        return redirect('images:batch_detection_results_url', pk=self.imageset.id)
+
+    def process_batch_detection(self, yolo_model_name, custom_model, model_conf):
+        """Выполняет пакетное распознавание для всех изображений в наборе."""
+
+        # Настройка модели
+        if custom_model:
+            model = YOLO(custom_model.pth_filepath)
+            is_custom_model = True
+        else:
+            yolo_weightsdir = settings.YOLOV8_WEIGTHS_DIR
+            model_path = os.path.join(yolo_weightsdir, yolo_model_name)
+            if not os.path.exists(model_path):
+                model = YOLO(yolo_model_name)
+            else:
+                model = YOLO(model_path)
+            is_custom_model = False
+
+        # Обновляем названия классов для кастомной модели
+        if is_custom_model:
+            for idx in model.names:
+                if model.names[idx].lower() in ['cat', 'sheep']:
+                    model.names[idx] = 'irbis'
+
+        # Создаем директорию для сохранения результатов
+        media_folder = settings.MEDIA_ROOT
+        inferenced_img_dir = os.path.join(media_folder, "inferenced_image")
+        if not os.path.exists(inferenced_img_dir):
+            os.makedirs(inferenced_img_dir, exist_ok=True)
+
+        processed_count = 0
+        detected_count = 0
+        detected_images = []
+
+        # Обрабатываем каждое изображение в наборе
+        for image_file in self.imageset.images.all():
+            try:
+                # Загружаем изображение
+                img_bytes = image_file.image.read()
+                img = I.open(io.BytesIO(img_bytes))
+
+                # Запускаем распознавание
+                results = model(img, conf=model_conf, verbose=False)
+
+                # Обрабатываем результаты
+                detection_boxes = []
+                for r in results:
+                    # Обновляем названия классов если нужно
+                    if is_custom_model and hasattr(r, 'names'):
+                        for idx in r.names:
+                            if r.names[idx].lower() in ['cat', 'sheep']:
+                                r.names[idx] = 'irbis'
+
+                    for box in r.boxes:
+                        b = box.xywhn[0].tolist()
+                        cls_id = int(box.cls[0].item())
+                        conf = float(box.conf[0].item())
+
+                        class_name = model.names[cls_id]
+                        if is_custom_model and class_name.lower() in ['cat', 'sheep']:
+                            class_name = 'irbis'
+
+                        detection_boxes.append({
+                            "class": class_name,
+                            "class_id": cls_id,
+                            "confidence": conf,
+                            "x": b[0],
+                            "y": b[1],
+                            "width": b[2],
+                            "height": b[3]
+                        })
+
+                processed_count += 1
+
+                # Если есть детекции, сохраняем результат
+                if detection_boxes:
+                    detected_count += 1
+
+                    # Генерируем имя файла
+                    if custom_model:
+                        img_file_suffix = f"custom_{custom_model.id}"
+                    else:
+                        img_file_suffix = f"yolo_{os.path.splitext(yolo_model_name)[0]}"
+
+                    img_filename = f"{os.path.splitext(image_file.name)[0]}_{img_file_suffix}{os.path.splitext(image_file.name)[1]}"
+                    img_path = os.path.join(inferenced_img_dir, img_filename)
+
+                    # Сохраняем изображение с аннотациями
+                    result = results[0]
+                    plotted_img = result.plot()
+                    I.fromarray(plotted_img).save(img_path, format="JPEG")
+
+                    # Создаем запись в базе данных
+                    inf_img = InferencedImage.objects.create(
+                        orig_image=image_file,
+                        inf_image_path=f"{settings.MEDIA_URL}inferenced_image/{img_filename}",
+                        detection_info=detection_boxes,
+                        model_conf=model_conf,
+                        custom_model=custom_model if is_custom_model else None,
+                        yolo_model=yolo_model_name if not is_custom_model else None,
+                    )
+
+                    # Добавляем в список обнаруженных
+                    detected_images.append({
+                        'id': image_file.id,
+                        'name': image_file.name,
+                        'url': image_file.get_imageurl(),
+                        'inference_url': inf_img.inf_image_path,
+                        'detections_count': len(detection_boxes),
+                        'classes': list(set([d['class'] for d in detection_boxes]))
+                    })
+
+                    # Помечаем изображение как обработанное
+                    image_file.is_inferenced = True
+                    image_file.save()
+
+            except Exception as e:
+                print(f"Ошибка при обработке изображения {image_file.name}: {e}")
+                continue
+
+        # Очищаем кэш CUDA если доступен
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+        return {
+            'processed_count': processed_count,
+            'detected_count': detected_count,
+            'detected_images': detected_images,
+        }
+
+
+class BatchDetectionResultsView(LoginRequiredMixin, TemplateView):
+    """View для отображения результатов пакетного распознавания."""
+
+    template_name = 'images/batch_detection_results.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        self.imageset = get_object_or_404(ImageSet, id=self.kwargs['pk'])
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['imageset'] = self.imageset
+
+        # Получаем результаты из сессии
+        batch_results = self.request.session.get('batch_results', {})
+        if batch_results.get('imageset_id') == self.imageset.id:
+            context.update(batch_results)
+            # Очищаем результаты из сессии
+            del self.request.session['batch_results']
+        else:
+            # Если нет результатов в сессии, получаем последние результаты из БД
+            latest_inferences = InferencedImage.objects.filter(
+                orig_image__image_set=self.imageset
+            ).order_by('-detection_timestamp')[:20]
+
+            detected_images = []
+            for inf in latest_inferences:
+                if inf.detection_info:
+                    detected_images.append({
+                        'id': inf.orig_image.id,
+                        'name': inf.orig_image.name,
+                        'url': inf.orig_image.get_imageurl(),
+                        'inference_url': inf.inf_image_path,
+                        'detections_count': len(inf.detection_info),
+                        'classes': list(set([d['class'] for d in inf.detection_info]))
+                    })
+
+            context.update({
+                'detected_images': detected_images,
+                'detected_count': len(detected_images),
+            })
+
+        return context

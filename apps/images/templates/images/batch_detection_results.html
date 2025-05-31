@@ -1,0 +1,254 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% load static %}
+
+{% block title %}
+    {% trans "Результаты пакетного распознавания" %} - {{ imageset.name }}
+{% endblock title %}
+
+{% block on_page_css %}
+<link href="{% static 'css/ekko-lightbox.css' %}" rel="stylesheet">
+{% endblock on_page_css %}
+
+{% block leftbar %}
+<div class="col-sm-3">
+    <div class="card">
+        <div class="card-header">
+            {% trans "Статистика обработки" %}
+        </div>
+        <div class="card-body">
+            {% if processed_count %}
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item d-flex justify-content-between">
+                    <span>{% trans "Обработано изображений" %}:</span>
+                    <strong class="text-primary">{{ processed_count }}</strong>
+                </li>
+                <li class="list-group-item d-flex justify-content-between">
+                    <span>{% trans "Найдены объекты" %}:</span>
+                    <strong class="text-success">{{ detected_count }}</strong>
+                </li>
+                <li class="list-group-item d-flex justify-content-between">
+                    <span>{% trans "Без объектов" %}:</span>
+                    <strong class="text-muted">{{ processed_count|add:"-"|add:detected_count }}</strong>
+                </li>
+                {% if model_name %}
+                <li class="list-group-item">
+                    <strong>{% trans "Модель" %}:</strong><br>
+                    <small>{{ model_name }}</small>
+                </li>
+                {% endif %}
+                {% if model_conf %}
+                <li class="list-group-item">
+                    <strong>{% trans "Порог уверенности" %}:</strong><br>
+                    <small>{{ model_conf }}</small>
+                </li>
+                {% endif %}
+            </ul>
+            {% else %}
+            <p class="text-muted">{% trans "Статистика недоступна" %}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header">
+            {% trans "Действия" %}
+        </div>
+        <div class="card-body">
+            <a href="{% url 'images:batch_detection_url' imageset.id %}" 
+               class="btn btn-primary btn-sm btn-block mb-2">
+                <i class="fas fa-redo"></i>
+                {% trans "Повторить распознавание" %}
+            </a>
+            <a href="{% url 'images:imageset_detail_url' imageset.id %}" 
+               class="btn btn-secondary btn-sm btn-block">
+                <i class="fas fa-arrow-left"></i>
+                {% trans "Назад к набору" %}
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock leftbar %}
+
+{% block content %}
+<div class="col-sm-9">
+    {% if detected_count > 0 %}
+        <div class="card">
+            <div class="card-header">
+                <h4>
+                    <i class="fas fa-search"></i>
+                    {% trans "Изображения с обнаруженными объектами" %}
+                    <span class="badge bg-success">{{ detected_count }}</span>
+                </h4>
+                {% if processed_count %}
+                <small class="text-muted">
+                    {% trans "Успешность распознавания" %}: 
+                    {% widthratio detected_count 1 processed_count %}%
+                </small>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <!-- Фильтры по классам -->
+                {% if detected_images %}
+                <div class="mb-4">
+                    <h6>{% trans "Фильтр по классам" %}:</h6>
+                    <div class="mb-3">
+                        <button class="btn btn-sm btn-outline-secondary me-2 filter-btn active" 
+                                data-filter="all">
+                            {% trans "Все" %} ({{ detected_count }})
+                        </button>
+                        {% for image in detected_images %}
+                            {% for class_name in image.classes %}
+                                <button class="btn btn-sm btn-outline-primary me-2 filter-btn" 
+                                        data-filter="{{ class_name }}">
+                                    {{ class_name }}
+                                </button>
+                            {% endfor %}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="row">
+                    {% for image in detected_images %}
+                    <div class="col-lg-4 col-md-6 mb-4 image-card">
+                        <div class="card h-100">
+                            <div class="position-relative">
+                                <a href="{{ image.inference_url }}" 
+                                   data-toggle="lightbox" 
+                                   data-gallery="detection-gallery"
+                                   data-title="{{ image.name }}">
+                                    <img src="{{ image.inference_url }}" 
+                                         class="card-img-top" 
+                                         style="height: 200px; object-fit: cover;"
+                                         alt="{{ image.name }}">
+                                </a>
+                                <div class="position-absolute top-0 end-0 m-2">
+                                    <span class="badge bg-primary">
+                                        {{ image.detections_count }} {% trans "объектов" %}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <h6 class="card-title">{{ image.name }}</h6>
+                                <div class="mb-2">
+                                    <small class="text-muted">{% trans "Найденные классы" %}:</small>
+                                    <div class="mt-1 image-classes">
+                                        {% for class_name in image.classes %}
+                                            <span class="badge bg-light text-dark me-1">{{ class_name }}</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <a href="{% url 'detectobj:detection_image_detail_url' image.id %}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i>
+                                        {% trans "Подробнее" %}
+                                    </a>
+                                    <a href="{{ image.url }}" 
+                                       data-toggle="lightbox" 
+                                       data-gallery="original-gallery"
+                                       class="btn btn-sm btn-outline-secondary">
+                                        <i class="fas fa-image"></i>
+                                        {% trans "Оригинал" %}
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="card">
+            <div class="card-body text-center">
+                <div class="py-5">
+                    <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                    <h4>{% trans "Объекты не найдены" %}</h4>
+                    <p class="text-muted">
+                        {% if processed_count %}
+                            {% trans "Из" %} {{ processed_count }} {% trans "обработанных изображений ни на одном не было найдено объектов" %}.
+                        {% else %}
+                            {% trans "В результате пакетного распознавания объекты не были найдены" %}.
+                        {% endif %}
+                    </p>
+                    <div class="mt-4">
+                        <a href="{% url 'images:batch_detection_url' imageset.id %}" 
+                           class="btn btn-primary me-2">
+                            <i class="fas fa-redo"></i>
+                            {% trans "Попробовать с другими настройками" %}
+                        </a>
+                        <a href="{% url 'images:imageset_detail_url' imageset.id %}" 
+                           class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i>
+                            {% trans "Назад к набору" %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock content %}
+
+{% block on_page_js %}
+<script src="{% static 'js/ekko-lightbox.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Инициализация lightbox
+    $(document).on('click', '[data-toggle="lightbox"]', function(event) {
+        event.preventDefault();
+        $(this).ekkoLightbox({
+            alwaysShowClose: true,
+        });
+    });
+
+    // Фильтрация по классам
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    const imageCards = document.querySelectorAll('.image-card');
+
+    // Удаляем дубликаты из фильтров
+    const uniqueFilters = new Set();
+    const filtersToRemove = [];
+    
+    filterButtons.forEach(button => {
+        if (button.dataset.filter !== 'all') {
+            if (uniqueFilters.has(button.dataset.filter)) {
+                filtersToRemove.push(button);
+            } else {
+                uniqueFilters.add(button.dataset.filter);
+            }
+        }
+    });
+    
+    filtersToRemove.forEach(button => button.remove());
+
+    // Обновляем список кнопок после удаления дубликатов
+    const uniqueFilterButtons = document.querySelectorAll('.filter-btn');
+
+    uniqueFilterButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const filter = this.dataset.filter;
+            
+            // Обновляем активную кнопку
+            uniqueFilterButtons.forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Фильтруем изображения
+            imageCards.forEach(card => {
+                const classes = Array.from(card.querySelectorAll('.image-classes .badge')).map(badge => 
+                    badge.textContent.trim()
+                );
+                
+                if (filter === 'all' || classes.includes(filter)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    });
+});
+</script>
+{% endblock on_page_js %}

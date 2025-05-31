@@ -1,17 +1,20 @@
-# Core dependencies
+# Core Django dependencies
 Django==4.2.8
 django-crispy-forms==2.1
 crispy-bootstrap4==2023.1
 django-cleanup==8.0.0
 django-debug-toolbar==4.2.0
+django-unfold==0.12.0
+
+# Image processing
 Pillow==10.1.0
 
-# YOLO dependencies
+# YOLO and ML dependencies
 ultralytics==8.0.227    # YOLOv8 package
 torch==2.1.2            # PyTorch
 torchvision==0.16.2     # PyTorch Vision
-opencv-python==4.8.1.78 # OpenCV
-numpy==1.26.2           # NumPy
+opencv-python==4.8.1.78 # OpenCV for image processing
+numpy==1.26.2           # NumPy for numerical operations
 
 # Visualization and data processing
 matplotlib==3.8.2
@@ -19,12 +22,70 @@ pandas==2.1.3
 PyYAML==6.0.1
 seaborn==0.13.0
 
-# Utilities
-tqdm==4.66.1
-psutil==5.9.6
-celery==5.3.6
+# Utilities and performance
+tqdm==4.66.1            # Progress bars
+psutil==5.9.6           # System monitoring
+celery==5.3.6           # Async task queue (for future batch processing optimization)
+redis==5.0.1            # Redis client for Celery
 
-# Optional - For file handling
-boto3==1.29.6           # S3 file handling
+# File handling and storage
+boto3==1.29.6           # AWS S3 integration (optional)
 python-dateutil==2.8.2
 pytz==2023.3.post1
+
+# Database drivers (choose one based on your database)
+# PostgreSQL (recommended for production)
+psycopg2-binary==2.9.9
+
+# SQLite (default, for development)
+# No additional package needed - included with Python
+
+# MySQL (alternative)
+# mysqlclient==2.2.0
+
+# Web server utilities (for production)
+gunicorn==21.2.0        # WSGI HTTP Server
+whitenoise==6.6.0       # Static file serving
+
+# Development and testing utilities
+ipython==8.17.2         # Enhanced Python shell
+django-extensions==3.2.3 # Useful Django extensions
+factory-boy==3.3.0      # Test data generation
+pytest==7.4.3          # Testing framework
+pytest-django==4.7.0   # Django integration for pytest
+
+# Monitoring and logging (optional)
+sentry-sdk==1.38.0      # Error tracking
+
+# API and documentation (optional)
+djangorestframework==3.14.0  # For API endpoints
+drf-spectacular==0.26.5      # API documentation
+
+# Security enhancements (recommended for production)
+django-cors-headers==4.3.1   # CORS handling
+django-ratelimit==4.1.0      # Rate limiting
+
+# Environment management
+python-decouple==3.8    # Environment variables management
+
+# Additional utilities for image processing
+imageio==2.31.6         # Image I/O
+scikit-image==0.22.0    # Image processing algorithms (optional)
+
+# Memory optimization
+memory-profiler==0.61.0 # Memory usage profiling (development only)
+
+# For handling different image formats
+pillow-heif==0.13.0     # HEIF/HEIC support (optional)
+
+# Translation and internationalization
+babel==2.13.1           # Internationalization utilities (optional)
+
+# Development tools (remove in production)
+black==23.11.0          # Code formatting
+flake8==6.1.0           # Code linting
+isort==5.12.0           # Import sorting
+
+# Documentation (optional)
+sphinx==7.2.6           # Documentation generator
+sphinx-rtd-theme==1.3.0 # Read the Docs theme

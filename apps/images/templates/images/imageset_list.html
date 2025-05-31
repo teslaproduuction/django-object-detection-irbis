@@ -1,71 +1,255 @@
 {% extends 'base.html' %}
-{% load static crispy_forms_tags %}
 {% load i18n %}
 
 {% block title %}
-{% trans "Imagesets" %}
+    {% trans "Imagesets" %}
 {% endblock title %}
 
+{% block leftbar %}
+<div class="col-sm-3">
+    <div class="card">
+        <div class="card-body">
+            <a href="{% url 'images:imageset_create_url' %}"
+               class="btn btn-primary btn-block">
+                <i class="fas fa-plus"></i>
+                {% trans "Create imageset" %}
+            </a>
+        </div>
+    </div>
+
+    <ul class="list-group list-group-flush mt-3">
+        <li class="list-group-item">
+            <a href="?view=public" class="text-decoration-none">
+                <i class="fas fa-globe"></i>
+                {% trans "Public image sets" %}
+            </a>
+        </li>
+        <li class="list-group-item">
+            <a href="?view=user" class="text-decoration-none">
+                <i class="fas fa-user"></i>
+                {% trans "My image sets" %}
+            </a>
+        </li>
+    </ul>
+</div>
+{% endblock leftbar %}
 
 {% block content %}
-    <div class="row">
-        <div class="d-flex justify-content-center mb-2">
-            <a class="btn btn-sm btn-outline-success mx-1" type="button" href="{% url 'images:imageset_create_url' %}">{% trans "Create imageset" %}</a>
-        </div>
-        <div class="d-flex align-items-start">
-            <div style="width:20%" class="nav flex-column nav-pills me-5" id="v-pills-tab" role="tablist" aria-orientation="vertical">
-                <button class="nav-link active" id="v-pills-public-tab" data-bs-toggle="pill" data-bs-target="#v-pills-public" type="button" role="tab" aria-controls="v-pills-public" aria-selected="true">{% trans "Public image sets" %}</button>
-                <button class="nav-link" id="v-pills-user-tab" data-bs-toggle="pill" data-bs-target="#v-pills-user" type="button" role="tab" aria-controls="v-pills-user" aria-selected="false">{% trans "My image sets" %}</button>
-            </div>
-            <div class="tab-content" id="v-pills-tabContent" style="width:80%">
-                <div class="tab-pane fade show active" id="v-pills-public" role="tabpanel" aria-labelledby="v-pills-public-tab" tabindex="0">
-                    {% for imgset in public_imagesets %}
-                        <div class="card mb-3">
-                            <div class="card-header">
-                                <a href="{% url 'images:imageset_detail_url' imgset.id %}">{{ imgset }}</a>
-                            </div>
-                            <div class="card-body">
-                                <ul class="list-group list-group-flush">
-                                    <li class="list-group-item"><b>{% trans "Uploaded by" %}</b>: {{ imgset.user|capfirst }}</li>
-                                    <li class="list-group-item"><b>{% trans "Total images" %}</b>: {{ imgset.images.count }}</li>
-                                </ul>
-                            </div>
-                        </div>
-                    {% empty %}
-                        <div class="card">
-                            <div class="card-header">
-                                {% trans "No public imageset created Yet!" %}
-                            </div>
-                        </div>
-                    {% endfor %}
+<div class="col-sm-9">
+    {% if 'public' in request.GET.view or not request.GET.view %}
+        <h4 class="mb-4">
+            <i class="fas fa-globe"></i>
+            {% trans "Public image sets" %}
+        </h4>
+
+        {% if public_imagesets %}
+            {% for imageset in public_imagesets %}
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <a href="{% url 'images:imageset_detail_url' imageset.id %}"
+                           class="text-decoration-none">
+                            {{ imageset.name|capfirst }}
+                        </a>
+                    </h5>
+                    <div class="btn-group btn-group-sm">
+                        {% if imageset.images.count > 0 %}
+                            <a href="{% url 'images:batch_detection_url' imageset.id %}"
+                               class="btn btn-outline-success"
+                               title="{% trans 'Пакетное распознавание' %}">
+                                <i class="fas fa-magic"></i>
+                            </a>
+                        {% endif %}
+                        <a href="{% url 'images:imagefile_list_url' imageset.id %}"
+                           class="btn btn-outline-primary"
+                           title="{% trans 'View Images' %}">
+                            <i class="fas fa-images"></i>
+                        </a>
+                    </div>
                 </div>
-                <div class="tab-pane fade" id="v-pills-user" role="tabpanel" aria-labelledby="v-pills-user-tab" tabindex="0">
-                    {% for imgset in user_imagesets %}
-                        <div class="card mb-3">
-                            <div class="card-header">
-                                <a href="{% url 'images:imageset_detail_url' imgset.id %}">{{ imgset }}</a>
-                            </div>
-                            <div class="card-body">
-                                <ul class="list-group list-group-flush">
-                                    <li class="list-group-item"><b>{% trans "Uploaded by" %}</b>: {{ imgset.user|capfirst }}</li>
-                                    <li class="list-group-item"><b>{% trans "Total images" %}</b>: {{ imgset.images.count }}</li>
-                                </ul>
-                            </div>
-                        </div>
-                    {% empty %}
-                        <div class="card">
-                            <div class="card-body">
-                                {% trans "No Imageset Created Yet!" %}
-                            </div>
-                        </div>
-                    {% endfor %}
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>{% trans "Uploaded by" %}:</span>
+                            <strong>{{ imageset.user|capfirst }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>{% trans "Total images" %}:</span>
+                            <span class="badge bg-primary">{{ imageset.images.count }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>{% trans "Обработано" %}:</span>
+                            <span class="badge bg-success">{{ imageset.images.filter__is_inferenced=True.count }}</span>
+                        </li>
+                        {% if imageset.description %}
+                        <li class="list-group-item">
+                            <strong>{% trans "Description" %}:</strong> {{ imageset.description|truncatechars:100 }}
+                        </li>
+                        {% endif %}
+                    </ul>
                 </div>
             </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                {% trans "No public imageset created Yet!" %}
+            </div>
+        {% endif %}
+    {% endif %}
+
+    {% if 'user' in request.GET.view %}
+        <h4 class="mb-4">
+            <i class="fas fa-user"></i>
+            {% trans "My image sets" %}
+        </h4>
+
+        {% if user_imagesets %}
+            {% for imageset in user_imagesets %}
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <a href="{% url 'images:imageset_detail_url' imageset.id %}"
+                           class="text-decoration-none">
+                            {{ imageset.name|capfirst }}
+                        </a>
+                    </h5>
+                    <div class="btn-group btn-group-sm">
+                        {% if imageset.images.count > 0 %}
+                            <a href="{% url 'images:batch_detection_url' imageset.id %}"
+                               class="btn btn-outline-success"
+                               title="{% trans 'Пакетное распознавание' %}">
+                                <i class="fas fa-magic"></i>
+                            </a>
+                        {% endif %}
+                        <a href="{% url 'images:imagefile_list_url' imageset.id %}"
+                           class="btn btn-outline-primary"
+                           title="{% trans 'View Images' %}">
+                            <i class="fas fa-images"></i>
+                        </a>
+                        <a href="{% url 'images:imageset_update_url' imageset.id %}"
+                           class="btn btn-outline-secondary"
+                           title="{% trans 'Update ImageSet' %}">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <a href="{% url 'images:imageset_delete_url' imageset.id %}"
+                           class="btn btn-outline-danger"
+                           title="{% trans 'Удалить набор' %}"
+                           onclick="return confirm('{% trans "Вы уверены, что хотите удалить этот набор и все изображения?" %}')">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>{% trans "Uploaded by" %}:</span>
+                            <strong>{{ imageset.user|capfirst }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>{% trans "Total images" %}:</span>
+                            <span class="badge bg-primary">{{ imageset.images.count }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>{% trans "Обработано" %}:</span>
+                            <span class="badge bg-success">{{ imageset.images.filter__is_inferenced=True.count }}</span>
+                        </li>
+                        {% if imageset.description %}
+                        <li class="list-group-item">
+                            <strong>{% trans "Description" %}:</strong> {{ imageset.description|truncatechars:100 }}
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                {% trans "No Imageset Created Yet!" %}
+                <a href="{% url 'images:imageset_create_url' %}" class="btn btn-primary btn-sm ms-2">
+                    {% trans "Create imageset" %}
+                </a>
+            </div>
+        {% endif %}
+    {% endif %}
+
+    <!-- Если не выбран конкретный вид, показываем оба -->
+    {% if not request.GET.view %}
+        <div class="row">
+            <div class="col-md-6">
+                <h5 class="mb-3">
+                    <i class="fas fa-globe"></i>
+                    {% trans "Public image sets" %}
+                </h5>
+                {% if public_imagesets %}
+                    {% for imageset in public_imagesets|slice:":3" %}
+                    <div class="card mb-2">
+                        <div class="card-body">
+                            <h6>
+                                <a href="{% url 'images:imageset_detail_url' imageset.id %}">
+                                    {{ imageset.name|capfirst }}
+                                </a>
+                            </h6>
+                            <small class="text-muted">
+                                {{ imageset.images.count }} {% trans "изображений" %} •
+                                {{ imageset.user|capfirst }}
+                            </small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% if public_imagesets.count > 3 %}
+                    <div class="text-center">
+                        <a href="?view=public" class="btn btn-outline-primary btn-sm">
+                            {% trans "Показать все публичные наборы" %}
+                        </a>
+                    </div>
+                    {% endif %}
+                {% else %}
+                    <div class="alert alert-light">
+                        {% trans "No public imageset created Yet!" %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="col-md-6">
+                <h5 class="mb-3">
+                    <i class="fas fa-user"></i>
+                    {% trans "My image sets" %}
+                </h5>
+                {% if user_imagesets %}
+                    {% for imageset in user_imagesets|slice:":3" %}
+                    <div class="card mb-2">
+                        <div class="card-body">
+                            <h6>
+                                <a href="{% url 'images:imageset_detail_url' imageset.id %}">
+                                    {{ imageset.name|capfirst }}
+                                </a>
+                            </h6>
+                            <small class="text-muted">
+                                {{ imageset.images.count }} {% trans "изображений" %} •
+                                {{ imageset.created|date:"d.m.Y" }}
+                            </small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% if user_imagesets.count > 3 %}
+                    <div class="text-center">
+                        <a href="?view=user" class="btn btn-outline-primary btn-sm">
+                            {% trans "Показать все мои наборы" %}
+                        </a>
+                    </div>
+                    {% endif %}
+                {% else %}
+                    <div class="alert alert-light">
+                        {% trans "No Imageset Created Yet!" %}
+                        <a href="{% url 'images:imageset_create_url' %}" class="btn btn-primary btn-sm ms-2">
+                            {% trans "Create imageset" %}
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
         </div>
-
-
-
-
-
-    </div>
+    {% endif %}
+</div>
 {% endblock content %}
