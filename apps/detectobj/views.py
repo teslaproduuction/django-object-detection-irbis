@@ -408,7 +408,8 @@ class ManualAnnotationView(LoginRequiredMixin, FormView):
                 print(f"✅ Перегенерация: кастомная модель с ТОЛЬКО ручными аннотациями")
             else:
                 # Если нет ручных аннотаций, запускаем стандартный инференс
-                model = YOLO(inf_img.custom_model.pth_filepath)
+                # ИСПРАВЛЕНИЕ: используем pth_file вместо model_file
+                model = YOLO(inf_img.custom_model.pth_file.path)
                 results = model(img,
                                 conf=float(inf_img.model_conf) if inf_img.model_conf else settings.MODEL_CONFIDENCE,
                                 verbose=False)
@@ -478,7 +479,17 @@ class ManualAnnotationView(LoginRequiredMixin, FormView):
         context['class_names'] = list(class_names)
 
         # Добавляем размеры изображения для правильной работы JavaScript
-        img_width, img_height, *_ = self.image.get_imgshape()
+        img_shape = self.image.get_imgshape()
+        if img_shape != "Unknown" and 'x' in img_shape:
+            img_width, img_height = map(int, img_shape.split('x'))
+        else:
+            # Попробуем получить размеры напрямую из файла
+            try:
+                with I.open(self.image.get_imagepath) as img:
+                    img_width, img_height = img.size
+            except:
+                img_width, img_height = 640, 640  # значения по умолчанию
+
         context['img_width'] = img_width
         context['img_height'] = img_height
 
@@ -684,7 +695,8 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
         # uploaded this model.
         if custom_model_id:
             detection_model = MLModel.objects.get(id=custom_model_id)
-            model = YOLO(detection_model.pth_filepath)
+            # ИСПРАВЛЕНИЕ: используем pth_file вместо model_file
+            model = YOLO(detection_model.pth_file.path)
             is_custom_model = True
             # Print class names for debugging
             print("Custom model class names:", model.names)

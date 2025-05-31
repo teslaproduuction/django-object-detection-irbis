@@ -288,12 +288,13 @@ class BatchDetectionView(LoginRequiredMixin, FormView):
     def process_batch_detection(self, yolo_model_name, custom_model, model_conf):
         """Выполняет пакетное распознавание для всех изображений в наборе."""
 
-        # Определяем тип модели (добавить эту строку)
+        # Определяем тип модели
         is_custom_model = custom_model is not None
 
         # Загрузка модели
         if is_custom_model:
-            model = YOLO(custom_model.model_file.path)
+            # ИСПРАВЛЕНИЕ: используем pth_file вместо model_file
+            model = YOLO(custom_model.pth_file.path)
             img_file_suffix = f"custom_{custom_model.id}"
         else:
             model = YOLO(yolo_model_name)  # Автоматически загружает модель по имени
@@ -320,10 +321,10 @@ class BatchDetectionView(LoginRequiredMixin, FormView):
         detected_images = []
 
         # Обрабатываем каждое изображение в наборе
-        for image_file in self.imageset.images.all():
+        for image_obj in self.imageset.images.all():
             try:
                 # Загружаем изображение
-                img_bytes = image_file.image.read()
+                img_bytes = image_obj.image.read()
                 img = I.open(io.BytesIO(img_bytes))
 
                 # Запускаем распознавание
@@ -369,7 +370,7 @@ class BatchDetectionView(LoginRequiredMixin, FormView):
                     else:
                         img_file_suffix = f"yolo_{os.path.splitext(yolo_model_name)[0]}"
 
-                    img_filename = f"{os.path.splitext(image_file.name)[0]}_{img_file_suffix}{os.path.splitext(image_file.name)[1]}"
+                    img_filename = f"{os.path.splitext(image_obj.name)[0]}_{img_file_suffix}{os.path.splitext(image_obj.name)[1]}"
                     img_path = os.path.join(inferenced_img_dir, img_filename)
 
                     # Сохраняем изображение с аннотациями
@@ -379,7 +380,7 @@ class BatchDetectionView(LoginRequiredMixin, FormView):
 
                     # Создаем запись в базе данных
                     inf_img = InferencedImage.objects.create(
-                        orig_image=image_file,
+                        orig_image=image_obj,
                         inf_image_path=f"{settings.MEDIA_URL}inferenced_image/{img_filename}",
                         detection_info=detection_boxes,
                         model_conf=model_conf,
@@ -387,22 +388,22 @@ class BatchDetectionView(LoginRequiredMixin, FormView):
                         yolo_model=yolo_model_name if not is_custom_model else None,
                     )
 
-                    # Добавляем в список обнаруженных
+                    # ИСПРАВЛЕНИЕ: используем get_imageurl без скобок (это свойство, а не метод)
                     detected_images.append({
-                        'id': image_file.id,
-                        'name': image_file.name,
-                        'url': image_file.get_imageurl(),
+                        'id': image_obj.id,
+                        'name': image_obj.name,
+                        'url': image_obj.get_imageurl,
                         'inference_url': inf_img.inf_image_path,
                         'detections_count': len(detection_boxes),
                         'classes': list(set([d['class'] for d in detection_boxes]))
                     })
 
                     # Помечаем изображение как обработанное
-                    image_file.is_inferenced = True
-                    image_file.save()
+                    image_obj.is_inferenced = True
+                    image_obj.save()
 
             except Exception as e:
-                print(f"Ошибка при обработке изображения {image_file.name}: {e}")
+                print(f"Ошибка при обработке изображения {image_obj.name}: {e}")
                 continue
 
         # Очищаем кэш CUDA если доступен
@@ -434,20 +435,22 @@ class BatchDetectionResultsView(LoginRequiredMixin, TemplateView):
         if batch_results.get('imageset_id') == self.imageset.id:
             context.update(batch_results)
             # Очищаем результаты из сессии
-            del self.request.session['batch_results']
+            if 'batch_results' in self.request.session:
+                del self.request.session['batch_results']
         else:
             # Если нет результатов в сессии, получаем последние результаты из БД
             latest_inferences = InferencedImage.objects.filter(
                 orig_image__image_set=self.imageset
-            ).order_by('-detection_timestamp')[:20]
+            ).filter(detection_info__isnull=False).order_by('-detection_timestamp')[:20]
 
             detected_images = []
             for inf in latest_inferences:
                 if inf.detection_info:
+                    # ИСПРАВЛЕНИЕ: используем get_imageurl без скобок
                     detected_images.append({
                         'id': inf.orig_image.id,
                         'name': inf.orig_image.name,
-                        'url': inf.orig_image.get_imageurl(),
+                        'url': inf.orig_image.get_imageurl,
                         'inference_url': inf.inf_image_path,
                         'detections_count': len(inf.detection_info),
                         'classes': list(set([d['class'] for d in inf.detection_info]))
@@ -459,6 +462,7 @@ class BatchDetectionResultsView(LoginRequiredMixin, TemplateView):
             })
 
         return context
+
 
 class ImagesDeleteUrl(LoginRequiredMixin, DeleteView):
     model = ImageFile
