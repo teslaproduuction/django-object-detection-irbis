@@ -32,6 +32,20 @@
                             {% trans "Размер изображения" %}: {{ img_qs.get_imgshape }}
                         </div>
 
+                        {% if has_duplicates %}
+                        <div class="alert alert-info mt-3">
+                            <i class="fas fa-info-circle"></i>
+                            {% blocktrans count count=duplicate_count %}
+                            Найден {{ count }} дубликат этого изображения в других наборах
+                            {% plural %}
+                            Найдено {{ count }} дубликатов этого изображения в других наборах
+                            {% endblocktrans %}
+                            {% if duplicate_sets %}
+                                <br><small>{% trans "Наборы" %}: {{ duplicate_sets|join:", " }}{% if duplicate_count > 3 %} ...{% endif %}</small>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
                         <!-- Добавляем кнопку для ручной разметки -->
                         <div class="mt-3">
                             <a href="{% url 'detectobj:manual_annotation_url' img_qs.id %}" class="btn btn-warning">
@@ -62,6 +76,13 @@
                                 </form>
                             </div>
                         </div>
+
+                        {% if is_custom_model and has_duplicates %}
+                        <div class="alert alert-success mt-3">
+                            <i class="fas fa-check-circle"></i>
+                            {% trans "При использовании кастомной модели, ручные аннотации с дубликатов будут автоматически применены" %}
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
                 <hr>
@@ -109,7 +130,11 @@
 
                                         <!-- Ручное обнаружение -->
                                         <h5 class="cart-title text-muted">{% trans "Ручное обнаружение объектов" %}:
-                                        <span class="text-success">{{ manual_annotations|length }}</span></h5>
+                                        <span class="text-success">{{ manual_annotations|length }}</span>
+                                        {% if has_duplicates %}
+                                            <span class="badge bg-info">{% trans "Включая аннотации с дубликатов" %}</span>
+                                        {% endif %}
+                                        </h5>
 
                                         {% if manual_annotations|length > 0 %}
                                             <hr>
@@ -118,6 +143,9 @@
                                                 <strong>{% trans "Достоверность" %}</strong>: {{ annotation.confidence|floatformat:2 }}<br>
                                                 <strong>{% trans "Добавлено пользователем" %}</strong>: {{ annotation.created_by.username }}<br>
                                                 <strong>{% trans "Дата добавления" %}</strong>: {{ annotation.created }}<br>
+                                                {% if annotation.image.id != img_qs.id %}
+                                                    <span class="badge bg-info">{% trans "Из набора" %}: {{ annotation.image.image_set.name }}</span>
+                                                {% endif %}
                                                 <hr>
                                             {% endfor %}
                                         {% endif %}

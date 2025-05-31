@@ -18,6 +18,7 @@ from django.core.paginator import Paginator
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from django.http import JsonResponse, HttpResponseRedirect
+from django.db.models import Q
 
 from images.models import ImageFile
 from .models import InferencedImage, ManualAnnotation
@@ -54,6 +55,10 @@ class SaveAnnotationView(LoginRequiredMixin, FormView):
                 created_by=request.user,
                 is_manual=True
             )
+
+            # Применяем аннотации к дубликатам
+            self._apply_annotations_to_duplicates(image, annotation)
+
             return JsonResponse({
                 'status': 'success',
                 'message': _('Аннотация успешно сохранена'),
@@ -61,6 +66,27 @@ class SaveAnnotationView(LoginRequiredMixin, FormView):
             })
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+    def _apply_annotations_to_duplicates(self, original_image, annotation):
+        """Применяет аннотацию к изображениям-дубликатам."""
+        if original_image.image_hash:
+            duplicate_images = ImageFile.objects.filter(
+                image_hash=original_image.image_hash
+            ).exclude(id=original_image.id)
+
+            for dup_img in duplicate_images:
+                # Создаем копию аннотации для дубликата
+                ManualAnnotation.objects.create(
+                    image=dup_img,
+                    class_name=annotation.class_name,
+                    x_center=annotation.x_center,
+                    y_center=annotation.y_center,
+                    width=annotation.width,
+                    height=annotation.height,
+                    confidence=annotation.confidence,
+                    created_by=annotation.created_by,
+                    is_manual=True
+                )
 
 
 class ManualAnnotationView(LoginRequiredMixin, FormView):
@@ -86,6 +112,8 @@ class ManualAnnotationView(LoginRequiredMixin, FormView):
     def get_initial(self):
         # Загружаем существующие аннотации для редактирования
         initial = []
+
+        # Получаем аннотации для текущего изображения
         for annotation in ManualAnnotation.objects.filter(image=self.image):
             initial.append({
                 'class_name': annotation.class_name,
@@ -94,12 +122,39 @@ class ManualAnnotationView(LoginRequiredMixin, FormView):
                 'width': annotation.width,
                 'height': annotation.height,
             })
+
+        # Если нет аннотаций для текущего изображения, ищем в дубликатах
+        if not initial and self.image.image_hash:
+            duplicate_images = ImageFile.objects.filter(
+                image_hash=self.image.image_hash
+            ).exclude(id=self.image.id)
+
+            for dup_img in duplicate_images:
+                dup_annotations = ManualAnnotation.objects.filter(image=dup_img)
+                if dup_annotations.exists():
+                    messages.info(
+                        self.request,
+                        _("Найдены аннотации с идентичного изображения из другого набора. Они загружены для редактирования.")
+                    )
+                    for annotation in dup_annotations:
+                        initial.append({
+                            'class_name': annotation.class_name,
+                            'x_center': annotation.x_center,
+                            'y_center': annotation.y_center,
+                            'width': annotation.width,
+                            'height': annotation.height,
+                        })
+                    break  # Берем аннотации только от первого найденного дубликата
+
         return initial
 
     def form_valid(self, form):
         # Save the manual annotations
         form.save()
         messages.success(self.request, _("Аннотации успешно сохранены"))
+
+        # Применяем аннотации к дубликатам
+        self._apply_annotations_to_duplicates()
 
         # Now update any existing InferencedImage records for this image
         all_annotations = ManualAnnotation.objects.filter(image=self.image)
@@ -155,7 +210,8 @@ class ManualAnnotationView(LoginRequiredMixin, FormView):
 
                         # Run inference
                         results = model(img,
-                                        conf=float(inf_img.model_conf) if inf_img.model_conf else settings.MODEL_CONFIDENCE,
+                                        conf=float(
+                                            inf_img.model_conf) if inf_img.model_conf else settings.MODEL_CONFIDENCE,
                                         verbose=False)
 
                         # Get the first result
@@ -198,10 +254,44 @@ class ManualAnnotationView(LoginRequiredMixin, FormView):
                     inf_img.save()
 
             if existing_inferences.exists():
-                messages.info(self.request, _("Аннотации также добавлены к существующим результатам распознавания с кастомными моделями"))
+                messages.info(self.request,
+                              _("Аннотации также добавлены к существующим результатам распознавания с кастомными моделями"))
 
         # Make sure to always redirect to the success URL
         return HttpResponseRedirect(self.get_success_url())
+
+    def _apply_annotations_to_duplicates(self):
+        """Применяет аннотации текущего изображения к его дубликатам."""
+        if self.image.image_hash:
+            duplicate_images = ImageFile.objects.filter(
+                image_hash=self.image.image_hash
+            ).exclude(id=self.image.id)
+
+            if duplicate_images.exists():
+                all_annotations = ManualAnnotation.objects.filter(image=self.image)
+
+                for dup_img in duplicate_images:
+                    # Удаляем старые аннотации дубликата
+                    ManualAnnotation.objects.filter(image=dup_img).delete()
+
+                    # Копируем новые аннотации
+                    for annotation in all_annotations:
+                        ManualAnnotation.objects.create(
+                            image=dup_img,
+                            class_name=annotation.class_name,
+                            x_center=annotation.x_center,
+                            y_center=annotation.y_center,
+                            width=annotation.width,
+                            height=annotation.height,
+                            confidence=annotation.confidence,
+                            created_by=self.request.user,
+                            is_manual=True
+                        )
+
+                messages.info(
+                    self.request,
+                    _("Аннотации также применены к %d идентичным изображениям в других наборах") % duplicate_images.count()
+                )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -216,12 +306,58 @@ class ManualAnnotationView(LoginRequiredMixin, FormView):
         context['img_width'] = img_width
         context['img_height'] = img_height
 
+        # Проверяем наличие дубликатов
+        if self.image.image_hash:
+            duplicate_count = ImageFile.objects.filter(
+                image_hash=self.image.image_hash
+            ).exclude(id=self.image.id).count()
+
+            if duplicate_count > 0:
+                context['has_duplicates'] = True
+                context['duplicate_count'] = duplicate_count
+
         return context
 
 
 class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
     model = ImageFile
     template_name = "detectobj/select_inference_image.html"
+
+    def _get_all_annotations_for_image(self, img_qs):
+        """Получает все аннотации для изображения, включая аннотации с дубликатов."""
+        # Сначала получаем аннотации для самого изображения
+        annotations = list(ManualAnnotation.objects.filter(image=img_qs))
+
+        # Если у изображения есть хэш, ищем аннотации в дубликатах
+        if img_qs.image_hash:
+            duplicate_images = ImageFile.objects.filter(
+                image_hash=img_qs.image_hash
+            ).exclude(id=img_qs.id)
+
+            for dup_img in duplicate_images:
+                dup_annotations = ManualAnnotation.objects.filter(image=dup_img)
+                if dup_annotations.exists():
+                    # Добавляем аннотации из дубликатов
+                    annotations.extend(list(dup_annotations))
+                    break  # Берем аннотации только от первого найденного дубликата
+
+        # Удаляем дубликаты аннотаций по координатам
+        unique_annotations = []
+        seen_coords = set()
+
+        for annotation in annotations:
+            coord_key = (
+                round(annotation.x_center, 3),
+                round(annotation.y_center, 3),
+                round(annotation.width, 3),
+                round(annotation.height, 3),
+                annotation.class_name
+            )
+            if coord_key not in seen_coords:
+                seen_coords.add(coord_key)
+                unique_annotations.append(annotation)
+
+        return unique_annotations
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -244,9 +380,20 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
                 classes_list = [item.get('class') for item in inf_img_qs.detection_info]
                 context['results_counter'] = collections.Counter(classes_list)
 
-        # Получаем ручные аннотации
-        manual_annotations = ManualAnnotation.objects.filter(image=img_qs)
+        # Получаем ВСЕ ручные аннотации (включая дубликаты)
+        manual_annotations = self._get_all_annotations_for_image(img_qs)
         context['manual_annotations'] = manual_annotations
+
+        # Информация о дубликатах
+        if img_qs.image_hash:
+            duplicate_images = ImageFile.objects.filter(
+                image_hash=img_qs.image_hash
+            ).exclude(id=img_qs.id)
+
+            if duplicate_images.exists():
+                context['has_duplicates'] = True
+                context['duplicate_count'] = duplicate_images.count()
+                context['duplicate_sets'] = [dup.image_set.name for dup in duplicate_images[:3]]  # Первые 3 набора
 
         # Если есть инференс, добавляем к нему ручные аннотации для отображения
         if 'inf_img_qs' in context and manual_annotations:
@@ -377,8 +524,8 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
         classes_list = [item["class"] for item in results_list]
         results_counter = collections.Counter(classes_list)
 
-        # Get manual annotations
-        manual_annotations = ManualAnnotation.objects.filter(image=img_qs)
+        # Получаем ВСЕ ручные аннотации (включая дубликаты)
+        manual_annotations = self._get_all_annotations_for_image(img_qs)
 
         # Create directory for inference images if it doesn't exist
         media_folder = settings.MEDIA_ROOT
@@ -391,7 +538,7 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
         img_filename = None
         inf_img = None
 
-        if not results_list and not (manual_annotations.exists() and is_custom_model):
+        if not results_list and not (manual_annotations and is_custom_model):
             messages.warning(
                 request,
                 _('Модель не смогла обнаружить объекты. Попробуйте другую модель или выполните ручную разметку.'))
@@ -445,7 +592,7 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
                 inf_img.yolo_model = yolo_model_name
 
             # Process manual annotations only if using a custom model
-            if manual_annotations.exists() and is_custom_model:
+            if manual_annotations and is_custom_model:
                 # Convert manual annotations to detection format
                 manual_detection_info = [annotation.to_detection_format() for annotation in manual_annotations]
 
@@ -526,84 +673,6 @@ class InferenceImageDetectionView(LoginRequiredMixin, DetailView):
 
             # Save inference image with combined annotations
             inf_img.save()
-
-            # Find duplicate images by hash (more reliable than filename)
-            if img_qs.image_hash and is_custom_model:  # Only apply for custom models
-                duplicate_images = ImageFile.objects.filter(image_hash=img_qs.image_hash).exclude(id=img_qs.id)
-                if duplicate_images.exists():
-                    # Only apply for custom models
-                    for dup_img in duplicate_images:
-                        dup_annotations = ManualAnnotation.objects.filter(image=dup_img)
-                        if dup_annotations.exists():
-                            # Convert annotations to detection format
-                            dup_detection_info = [annotation.to_detection_format() for annotation in dup_annotations]
-
-                            # If we already have detection info, add the duplicate annotations
-                            if inf_img.detection_info:
-                                # Check to avoid adding duplicate annotations
-                                existing_boxes = set()
-                                for box in inf_img.detection_info:
-                                    key = (box.get('x'), box.get('y'), box.get('width'), box.get('height'),
-                                           box.get('class'))
-                                    existing_boxes.add(key)
-
-                                # Only add unique annotations
-                                for box in dup_detection_info:
-                                    key = (box.get('x'), box.get('y'), box.get('width'), box.get('height'),
-                                           box.get('class'))
-                                    if key not in existing_boxes:
-                                        inf_img.detection_info.append(box)
-                            else:
-                                # If no detection info yet, use the duplicate annotations
-                                inf_img.detection_info = dup_detection_info
-
-                            # Save the updated detection info
-                            inf_img.save()
-
-                            # Add a message to inform the user
-                            messages.info(
-                                request,
-                                _('Найдены и применены ручные аннотации с идентичных изображений.'))
-
-                            # Only need to apply from one duplicate
-                            break
-            elif is_custom_model:  # Only apply for custom models
-                # Fallback to name-based detection if hash is not available
-                duplicate_images = ImageFile.objects.filter(name=img_qs.name).exclude(id=img_qs.id)
-                if duplicate_images.exists():
-                    # Only apply for custom models - if using YOLOv8 standard models, we skip this
-                    for dup_img in duplicate_images:
-                        dup_annotations = ManualAnnotation.objects.filter(image=dup_img)
-                        if dup_annotations.exists():
-                            # Convert annotations to detection format
-                            dup_detection_info = [annotation.to_detection_format() for annotation in dup_annotations]
-
-                            # If we already have detection info, add the duplicate annotations
-                            if inf_img.detection_info:
-                                # Check to avoid adding duplicate annotations
-                                existing_boxes = set()
-                                for box in inf_img.detection_info:
-                                    key = (box.get('x'), box.get('y'), box.get('width'), box.get('height'),
-                                           box.get('class'))
-                                    existing_boxes.add(key)
-
-                                # Only add unique annotations
-                                for box in dup_detection_info:
-                                    key = (box.get('x'), box.get('y'), box.get('width'), box.get('height'),
-                                           box.get('class'))
-                                    if key not in existing_boxes:
-                                        inf_img.detection_info.append(box)
-                            else:
-                                # If no detection info yet, use the duplicate annotations
-                                inf_img.detection_info = dup_detection_info
-
-                            # Save the updated detection info
-                            inf_img.save()
-
-                            # Add a message to inform the user
-                            messages.info(
-                                request,
-                                _('Найдены и применены ручные аннотации с похожих изображений.'))
 
             # Get the latest inference for display
             if inf_img:

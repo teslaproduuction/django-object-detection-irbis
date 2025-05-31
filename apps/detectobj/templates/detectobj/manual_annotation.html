@@ -75,6 +75,19 @@
             <h4>{% trans "Ручная разметка изображения" %}</h4>
         </div>
         <div class="card-body">
+            {% if has_duplicates %}
+            <div class="alert alert-info mb-3">
+                <i class="fas fa-info-circle"></i>
+                {% blocktrans count count=duplicate_count %}
+                <strong>Внимание!</strong> Найден {{ count }} дубликат этого изображения в других наборах.
+                Все аннотации будут автоматически применены к дубликатам.
+                {% plural %}
+                <strong>Внимание!</strong> Найдено {{ count }} дубликатов этого изображения в других наборах.
+                Все аннотации будут автоматически применены к дубликатам.
+                {% endblocktrans %}
+            </div>
+            {% endif %}
+
             <div class="row mb-3">
                 <div class="col-12">
                     <p>{% trans "Инструкция:" %}</p>
@@ -104,9 +117,15 @@
                                 <!-- Сюда будут добавляться аннотации -->
                                 {% if not form.initial %}
                                 <p>{% trans "Пока нет аннотаций. Нарисуйте прямоугольник на изображении, чтобы добавить." %}</p>
+                                {% else %}
+                                    {% if has_duplicates %}
+                                    <div class="alert alert-warning">
+                                        <small>{% trans "Загружены аннотации с дубликата изображения" %}</small>
+                                    </div>
+                                    {% endif %}
                                 {% endif %}
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="class-input">{% trans "Класс объекта:" %}</label>
                                 <input type="text" id="class-input" class="form-control" list="class-list" placeholder="{% trans 'Например: снежный барс' %}">
@@ -120,13 +139,13 @@
                                     <option value="человек">
                                 </datalist>
                             </div>
-                            
+
                             <button id="add-annotation-btn" class="btn btn-primary mt-2" disabled>
                                 {% trans "Добавить аннотацию" %}
                             </button>
-                            
+
                             <hr>
-                            
+
                             <form method="post" id="annotation-form">
                                 {% csrf_token %}
                                 <div id="form-container">
@@ -145,6 +164,9 @@
                                 </div>
                                 <button type="submit" class="btn btn-success">
                                     {% trans "Сохранить аннотации" %}
+                                    {% if has_duplicates %}
+                                        <span class="badge bg-light text-dark">+{{ duplicate_count }}</span>
+                                    {% endif %}
                                 </button>
                                 <a href="{% url 'detectobj:detection_image_detail_url' image.id %}" class="btn btn-secondary">
                                     {% trans "Отмена" %}
