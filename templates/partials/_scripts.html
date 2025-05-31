@@ -5,3 +5,331 @@
 <script src="{% static 'js/lightbox_bs5.js' %}"></script>
 <script src="{% static 'js/main.js' %}"></script>
 <script src="{% static 'js/site_js.js' %}"></script>
+
+
+<!-- jQuery (required for some legacy components) -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+
+<!-- Bootstrap 5 Bundle (includes Popper) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+
+<!-- GLightbox for image viewing (modern alternative) -->
+<script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
+
+<!-- Main application scripts -->
+{% comment %}
+<script src="{% static 'js/main.js' %}"></script>
+<script src="{% static 'js/site_js.js' %}"></script>
+{% endcomment %}
+
+<!-- Enhanced navbar and UI interactions -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Initialize popovers
+    var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+    var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+        return new bootstrap.Popover(popoverTriggerEl);
+    });
+
+    // Enhanced dropdown behavior
+    const dropdowns = document.querySelectorAll('.dropdown-toggle');
+    dropdowns.forEach(dropdown => {
+        dropdown.addEventListener('show.bs.dropdown', function() {
+            this.closest('.dropdown').classList.add('show');
+        });
+
+        dropdown.addEventListener('hide.bs.dropdown', function() {
+            this.closest('.dropdown').classList.remove('show');
+        });
+    });
+
+    // Smooth scrolling for navigation links
+    const navLinks = document.querySelectorAll('.navbar-nav .nav-link[href^="#"]');
+    navLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('href').substring(1);
+            const targetElement = document.getElementById(targetId);
+
+            if (targetElement) {
+                const navbarHeight = document.querySelector('.navbar').offsetHeight;
+                const targetPosition = targetElement.getBoundingClientRect().top + window.pageYOffset - navbarHeight - 20;
+
+                window.scrollTo({
+                    top: targetPosition,
+                    behavior: 'smooth'
+                });
+            }
+        });
+    });
+
+    // Enhanced form validation feedback
+    const forms = document.querySelectorAll('form');
+    forms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            if (!this.checkValidity()) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                // Show first invalid field
+                const firstInvalid = this.querySelector(':invalid');
+                if (firstInvalid) {
+                    firstInvalid.focus();
+                    firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+
+            this.classList.add('was-validated');
+        });
+    });
+
+    // Auto-hide alerts after 5 seconds
+    const alerts = document.querySelectorAll('.alert:not(.alert-permanent)');
+    alerts.forEach(alert => {
+        if (!alert.closest('.message')) return; // Skip non-message alerts
+
+        setTimeout(() => {
+            const bsAlert = new bootstrap.Alert(alert);
+            if (bsAlert) {
+                bsAlert.close();
+            }
+        }, 5000);
+    });
+
+    // Enhanced loading states for buttons
+    const submitButtons = document.querySelectorAll('button[type="submit"], input[type="submit"]');
+    submitButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            if (this.form && this.form.checkValidity()) {
+                this.classList.add('loading');
+                const originalText = this.innerHTML;
+                const loadingText = this.dataset.loadingText || 'Обработка...';
+
+                this.innerHTML = `<i class="fas fa-spinner fa-spin me-2"></i>${loadingText}`;
+                this.disabled = true;
+
+                // Re-enable button after 10 seconds as fallback
+                setTimeout(() => {
+                    this.innerHTML = originalText;
+                    this.disabled = false;
+                    this.classList.remove('loading');
+                }, 10000);
+            }
+        });
+    });
+
+    // Enhanced image lazy loading and error handling
+    const images = document.querySelectorAll('img');
+    images.forEach(img => {
+        // Add loading placeholder
+        img.addEventListener('load', function() {
+            this.classList.add('loaded');
+        });
+
+        // Handle image load errors
+        img.addEventListener('error', function() {
+            this.classList.add('error');
+            // Replace with placeholder if available
+            if (this.dataset.fallback) {
+                this.src = this.dataset.fallback;
+            } else {
+                // Create a placeholder
+                const placeholder = document.createElement('div');
+                placeholder.className = 'image-placeholder d-flex align-items-center justify-content-center';
+                placeholder.style.cssText = `
+                    width: ${this.offsetWidth || 150}px;
+                    height: ${this.offsetHeight || 150}px;
+                    background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+                    border-radius: 0.5rem;
+                    color: #6c757d;
+                    font-size: 2rem;
+                `;
+                placeholder.innerHTML = '<i class="fas fa-image"></i>';
+                this.parentNode.replaceChild(placeholder, this);
+            }
+        });
+    });
+
+    // Enhanced table responsiveness
+    const tables = document.querySelectorAll('.table');
+    tables.forEach(table => {
+        if (!table.parentNode.classList.contains('table-responsive')) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'table-responsive';
+            table.parentNode.insertBefore(wrapper, table);
+            wrapper.appendChild(table);
+        }
+    });
+
+    // Progress bar animations
+    const progressBars = document.querySelectorAll('.progress-bar');
+    const animateProgressBars = () => {
+        progressBars.forEach(bar => {
+            const rect = bar.getBoundingClientRect();
+            if (rect.top < window.innerHeight && rect.bottom > 0) {
+                const width = bar.dataset.width || bar.style.width;
+                if (width && !bar.classList.contains('animated')) {
+                    bar.style.width = '0%';
+                    bar.classList.add('animated');
+                    setTimeout(() => {
+                        bar.style.width = width;
+                    }, 100);
+                }
+            }
+        });
+    };
+
+    // Animate progress bars on scroll
+    window.addEventListener('scroll', animateProgressBars);
+    animateProgressBars(); // Initial check
+
+    // Enhanced card hover effects
+    const cards = document.querySelectorAll('.card');
+    cards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-5px)';
+        });
+
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+
+    // Search functionality enhancement
+    const searchInputs = document.querySelectorAll('input[type="search"], .search-input');
+    searchInputs.forEach(input => {
+        let timeout;
+        input.addEventListener('input', function() {
+            clearTimeout(timeout);
+            const query = this.value.toLowerCase();
+
+            timeout = setTimeout(() => {
+                // Add search logic here based on context
+                const searchTargets = document.querySelectorAll('.searchable');
+                searchTargets.forEach(target => {
+                    const text = target.textContent.toLowerCase();
+                    const isMatch = text.includes(query);
+                    target.style.display = isMatch || query === '' ? '' : 'none';
+                });
+            }, 300);
+        });
+    });
+
+    // Enhanced file upload preview
+    const fileInputs = document.querySelectorAll('input[type="file"]');
+    fileInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            const files = this.files;
+            const preview = this.parentNode.querySelector('.file-preview') ||
+                           this.parentNode.appendChild(document.createElement('div'));
+            preview.className = 'file-preview mt-2';
+            preview.innerHTML = '';
+
+            Array.from(files).forEach(file => {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.className = 'img-thumbnail me-2 mb-2';
+                        img.style.cssText = 'width: 100px; height: 100px; object-fit: cover;';
+                        preview.appendChild(img);
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    const fileInfo = document.createElement('div');
+                    fileInfo.className = 'alert alert-info d-inline-block me-2 mb-2 p-2';
+                    fileInfo.innerHTML = `<i class="fas fa-file me-1"></i>${file.name}`;
+                    preview.appendChild(fileInfo);
+                }
+            });
+        });
+    });
+
+    // Dynamic content loading indicators
+    const dynamicContent = document.querySelectorAll('.dynamic-content');
+    dynamicContent.forEach(content => {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('loaded');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        observer.observe(content);
+    });
+});
+
+// Global utility functions
+window.showToast = function(message, type = 'info') {
+    const toastContainer = document.querySelector('.toast-container') ||
+                          document.body.appendChild(document.createElement('div'));
+    toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+    toastContainer.style.zIndex = '1055';
+
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white bg-${type} border-0`;
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">${message}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+
+    toastContainer.appendChild(toast);
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+
+    toast.addEventListener('hidden.bs.toast', () => {
+        toast.remove();
+    });
+};
+
+window.showConfirm = function(message, callback) {
+    if (confirm(message)) {
+        callback();
+    }
+};
+
+// Enhanced CSRF token handling for AJAX requests
+window.getCSRFToken = function() {
+    return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+           document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+};
+
+// Enhanced AJAX wrapper with loading states
+window.makeRequest = function(url, options = {}) {
+    const defaults = {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': window.getCSRFToken()
+        }
+    };
+
+    const config = Object.assign(defaults, options);
+
+    return fetch(url, config)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .catch(error => {
+            console.error('Request failed:', error);
+            window.showToast('Произошла ошибка при выполнении запроса', 'danger');
+            throw error;
+        });
+};
+
+console.log('Enhanced UI scripts loaded successfully! 🚀');
+</script>
